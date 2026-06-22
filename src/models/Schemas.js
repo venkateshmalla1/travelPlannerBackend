@@ -1,24 +1,16 @@
-import { Schema, model } from 'mongoose';
-
-const UserSchema = new Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true, lowercase: true },
-  password: { type: String, required: true }
-}, { timestamps: true, collection: 'userData' });
-
-const TravelDetailsSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  destination: { type: String, required: true },
-  numberOfDays: { type: Number, required: true },
-  budgetCategory: { type: String, enum: ['Low', 'Medium', 'High'], required: true },
-  interests: [{ type: String }]
-}, { timestamps: true, collection: 'travelDetails' });
+// Locate inside models/Schemas.js and replace the AiResponseSchema definition:
 
 const AiResponseSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   travelDetailsId: { type: Schema.Types.ObjectId, ref: 'TravelDetails', required: true },
   tripSummary: {
-    destination: String, days: Number, budgetCategory: String, bestSeason: String, currency: String, language: String
+    destination: String, 
+    destinationImageUrl: String, // ADDED: Field for holding base64 string image asset
+    days: Number, 
+    budgetCategory: String, 
+    bestSeason: String, 
+    currency: String, 
+    language: String
   },
   dailyItinerary: [{
     day: Number,
@@ -42,7 +34,3 @@ const AiResponseSchema = new Schema({
     flightsOrTransit: Number, accommodation: Number, food: Number, activities: Number, miscellaneous: Number, totalEstimatedBudget: Number
   }
 }, { timestamps: true, collection: 'aiResponses' });
-
-export const User = model('User', UserSchema);
-export const TravelDetails = model('TravelDetails', TravelDetailsSchema);
-export const AiResponse = model('AiResponse', AiResponseSchema);
