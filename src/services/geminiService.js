@@ -1,12 +1,19 @@
 import 'dotenv/config';
+<<<<<<< HEAD
 import { GoogleGenAI } from '@google/genai';
 
 let aiInstance = null;
+=======
+import { GoogleGenAI, Type } from '@google/genai';
+
+let ai;
+>>>>>>> 982f53935fea38209f90d24ca577fc84b3db83b3
 
 const getGeminiClient = () => {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY is required to generate itineraries.');
   }
+<<<<<<< HEAD
   if (!aiInstance) {
     aiInstance = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   }
@@ -49,6 +56,11 @@ export const DailyItinerarySchema = {
     }
   },
   required: ["day", "schedule", "meals"]
+=======
+
+  ai ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  return ai;
+>>>>>>> 982f53935fea38209f90d24ca577fc84b3db83b3
 };
 
 export const ItineraryJsonSchema = {
@@ -57,12 +69,24 @@ export const ItineraryJsonSchema = {
     tripSummary: {
       type: "object",
       properties: {
+<<<<<<< HEAD
         destination: { type: "string" },
         days: { type: "integer" },
         budgetCategory: { type: "string" },
         bestSeason: { type: "string" },
         currency: { type: "string", description: "Currency SYMBOL (e.g. $, €, ₹)" },
         language: { type: "string" }
+=======
+        destination: { type: Type.STRING },
+        days: { type: Type.INTEGER },
+        budgetCategory: { type: Type.STRING },
+        bestSeason: { type: Type.STRING },
+        currency: { 
+  type: Type.STRING,
+  description: "Currency SYMBOL for the destination (e.g. '$', '€', '₹', '£', '¥'). Do not use currency codes."
+},
+        language: { type: Type.STRING }
+>>>>>>> 982f53935fea38209f90d24ca577fc84b3db83b3
       },
       required: ["destination", "days", "budgetCategory", "bestSeason", "currency", "language"]
     },
@@ -116,6 +140,7 @@ export const ItineraryJsonSchema = {
   required: ["tripSummary", "dailyItinerary", "recommendedHotels", "thingsToCarry", "safetyAndCautionTips", "budgetBreakdown"]
 };
 
+<<<<<<< HEAD
 export const generateItineraryFromAI = async (promptText, customSchema = ItineraryJsonSchema) => {
   const client = getGeminiClient();
   const response = await client.models.generateContent({
@@ -130,3 +155,14 @@ export const generateItineraryFromAI = async (promptText, customSchema = Itinera
   if (!response.text) throw new Error("Empty response received from Gemini engine.");
   return JSON.parse(response.text);
 };
+=======
+export const generateItineraryFromAI = async (promptText) => {
+  const response = await getGeminiClient().models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: promptText,
+    config: { responseMimeType: 'application/json', responseSchema: ItineraryJsonSchema, temperature: 0.2 }
+  });
+  if (!response.text) throw new Error("Empty response received from Gemini engine.");
+  return JSON.parse(response.text);
+};
+>>>>>>> 982f53935fea38209f90d24ca577fc84b3db83b3
