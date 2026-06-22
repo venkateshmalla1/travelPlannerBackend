@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User, TravelDetails, AiResponse } from '../models/Schemas.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { generateItineraryFromAI } from '../services/geminiService.js';
+import { generateItineraryFromAI, generateImageBase64 } from '../services/geminiService.js';
 
 const router = Router();
 
@@ -60,10 +60,17 @@ Include thingsToCarry, safetyAndHealthTips, and a structured dailyItinerary.`;
 
     const structuredAiOutput = await generateItineraryFromAI(prompt);
 
+    // ✅ Generate destination image
+    const destinationImageUrl = await generateImageBase64(destination);
+
     const savedItinerary = await AiResponse.create({
       userId: req.userId,
       travelDetailsId: travelDetails._id,
-      ...structuredAiOutput
+      ...structuredAiOutput,
+      tripSummary: {
+        ...structuredAiOutput.tripSummary,
+        destinationImageUrl: destinationImageUrl || '' // Add the generated image
+      }
     });
 
     res.status(201).json({ travelDetails, itinerary: savedItinerary });
