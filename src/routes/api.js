@@ -36,13 +36,24 @@ router.post('/auth/login', async (req, res) => {
 // Clean Generation Pipeline
 router.post('/trips/generate', authenticateToken, async (req, res) => {
   try {
-    const { destination, numberOfDays, budgetCategory, interests = [] } = req.body;
+    let { destination, numberOfDays, budgetCategory, interests = [] } = req.body;
     if (!destination || !numberOfDays || !budgetCategory) {
       return res.status(400).json({ error: "Missing required core itinerary fields." });
     }
 
+    // Capitalize properly ('low' -> 'Low') to prevent Mongoose Enum validation crashes
+    budgetCategory = budgetCategory.trim().charAt(0).toUpperCase() + budgetCategory.trim().slice(1).toLowerCase();
+
     const interestList = Array.isArray(interests) ? interests : [interests].filter(Boolean);
-    const travelDetails = await TravelDetails.create({ userId: req.userId, destination, numberOfDays: Number(numberOfDays), budgetCategory, interests: interestList });
+    
+    // Writing validation fallback boundary safely
+    const travelDetails = await TravelDetails.create({ 
+      userId: req.userId, 
+      destination, 
+      numberOfDays: Number(numberOfDays), 
+      budgetCategory, 
+      interests: interestList 
+    });
 
     const prompt = `Create a travel itinerary for "${destination}". Duration: ${numberOfDays} days. Budget: "${budgetCategory}". Interests: ${interestList.join(', ')}. Populate structural fields accurately according to the JSON format schemas.`;
     
@@ -85,7 +96,6 @@ router.patch('/trips/:id/modify-day', authenticateToken, async (req, res) => {
     
     const updatedDayJson = await generateItineraryFromAI(prompt, DailyItinerarySchema);
     
-    // Natively apply changes to the array item to accommodate Mongoose subdocument tracking
     currentTrip.dailyItinerary[dayIndex] = { ...updatedDayJson, day: Number(targetDay) };
     await currentTrip.save();
     
