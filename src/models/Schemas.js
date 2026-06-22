@@ -16,7 +16,7 @@ const TravelDetailsSchema = new Schema({
   interests: [{ type: String }]
 }, { timestamps: true, collection: 'travelDetails' });
 
-// AiResponse Schema (corrected + destinationImageUrl added)
+// AiResponse Schema
 const AiResponseSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   travelDetailsId: { type: Schema.Types.ObjectId, ref: 'TravelDetails', required: true },
@@ -76,16 +76,16 @@ const AiResponseSchema = new Schema({
     emergencyContacts: [{ type: String }]
   },
   budgetBreakdown: {
-    flightsOrTransit: { type: String, default: '0' },
-    accommodation: { type: String, default: '0' },
-    food: { type: String, default: '0' },
-    activities: { type: String, default: '0' },
-    miscellaneous: { type: String, default: '0' },
-    totalEstimatedBudget: { type: String, default: '0' }
+    // FIX: Set types to Number to cleanly match GoogleGenAI Type.INTEGER configuration
+    flightsOrTransit: { type: Number, default: 0 },
+    accommodation: { type: Number, default: 0 },
+    food: { type: Number, default: 0 },
+    activities: { type: Number, default: 0 },
+    miscellaneous: { type: Number, default: 0 },
+    totalEstimatedBudget: { type: Number, default: 0 }
   }
 }, { timestamps: true, collection: 'aiResponses' });
 
-// ✅ Proper exports
 export const User = model('User', UserSchema);
 export const TravelDetails = model('TravelDetails', TravelDetailsSchema);
 export const AiResponse = model('AiResponse', AiResponseSchema);
