@@ -7,6 +7,7 @@ import { generateItineraryFromAI } from '../services/geminiService.js';
 
 const router = Router();
 
+// Register
 router.post('/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -17,9 +18,12 @@ router.post('/auth/register', async (req, res) => {
     const newUser = await User.create({ name, email, password: hashedPassword });
     const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token, user: { id: newUser._id, name, email } });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// Login
 router.post('/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -29,30 +33,56 @@ router.post('/auth/login', async (req, res) => {
     }
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(200).json({ token, user: { id: user._id, name: user.name, email } });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// Generate trip itinerary
 router.post('/trips/generate', authenticateToken, async (req, res) => {
   try {
     const { destination, numberOfDays, budgetCategory, interests = [] } = req.body;
     const interestList = Array.isArray(interests) ? interests : [interests].filter(Boolean);
-    const travelDetails = await TravelDetails.create({ userId: req.userId, destination, numberOfDays, budgetCategory, interests: interestList });
 
-    const prompt = `Create a travel itinerary for "${destination}". Duration: ${numberOfDays} days. Budget: "${budgetCategory}". Interests: ${interestList.join(', ')}. Include thingsToCarry, safetyAnd[...]
+    const travelDetails = await TravelDetails.create({
+      userId: req.userId,
+      destination,
+      numberOfDays,
+      budgetCategory,
+      interests: interestList
+    });
+
+    const prompt = `Create a travel itinerary for "${destination}".
+Duration: ${numberOfDays} days.
+Budget: "${budgetCategory}".
+Interests: ${interestList.join(', ')}.
+Include thingsToCarry, safetyAndHealthTips, and a structured dailyItinerary.`;
+
     const structuredAiOutput = await generateItineraryFromAI(prompt);
 
-    const savedItinerary = await AiResponse.create({ userId: req.userId, travelDetailsId: travelDetails._id, ...structuredAiOutput });
+    const savedItinerary = await AiResponse.create({
+      userId: req.userId,
+      travelDetailsId: travelDetails._id,
+      ...structuredAiOutput
+    });
+
     res.status(201).json({ travelDetails, itinerary: savedItinerary });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// Get trips
 router.get('/trips', authenticateToken, async (req, res) => {
   try {
     const userItineraries = await AiResponse.find({ userId: req.userId }).sort({ createdAt: -1 });
     res.status(200).json(userItineraries);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// Modify a specific day in trip itinerary
 router.patch('/trips/:id/modify-day', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -64,13 +94,26 @@ router.patch('/trips/:id/modify-day', authenticateToken, async (req, res) => {
     const daySchedule = currentTrip.dailyItinerary.find(d => d.day === Number(targetDay));
     if (!daySchedule) return res.status(400).json({ error: 'Target day sequence not found.' });
 
-    const prompt = `Modify Day ${targetDay} of an itinerary for ${currentTrip.tripSummary.destination}. Current: ${JSON.stringify(daySchedule)}. Instruction: "${changeInstructions}". Return a single u[...]
+    const prompt = `Modify Day ${targetDay} of an itinerary for ${currentTrip.tripSummary.destination}.
+Current: ${JSON.stringify(daySchedule)}.
+Instruction: "${changeInstructions}".
+Return a single updated dailyItinerary day node item.`;
+
     const updatedDayJson = await generateItineraryFromAI(prompt);
     const dynamicDayData = updatedDayJson.dailyItinerary?.[0] || updatedDayJson.dailyItinerary;
-    
-    await AiResponse.updateOne({ _id: id, "dailyItinerary.day": Number(targetDay) }, { $set: { "dailyItinerary.$": { ...dynamicDayData, day: Number(targetDay) } } });
-    res.status(200).json({ message: "Itinerary day altered cleanly", refreshedTrip: await AiResponse.findById(id) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+
+    await AiResponse.updateOne(
+      { _id: id, "dailyItinerary.day": Number(targetDay) },
+      { $set: { "dailyItinerary.$": { ...dynamicDayData, day: Number(targetDay) } } }
+    );
+
+    res.status(200).json({
+      message: "Itinerary day altered cleanly",
+      refreshedTrip: await AiResponse.findById(id)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;
