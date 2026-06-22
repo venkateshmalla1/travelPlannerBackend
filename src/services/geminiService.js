@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 
 let ai = null;
 
@@ -12,35 +12,36 @@ const getGeminiClient = () => {
   return ai;
 };
 
+// Using robust string literals instead of the rigid Type enum
 export const DailyItinerarySchema = {
-  type: Type.OBJECT,
+  type: 'OBJECT',
   properties: {
-    day: { type: Type.INTEGER },
+    day: { type: 'INTEGER' },
     schedule: {
-      type: Type.OBJECT,
+      type: 'OBJECT',
       properties: { 
-        morning: { type: Type.STRING }, 
-        afternoon: { type: Type.STRING }, 
-        evening: { type: Type.STRING } 
+        morning: { type: 'STRING' }, 
+        afternoon: { type: 'STRING' }, 
+        evening: { type: 'STRING' } 
       },
       required: ["morning", "afternoon", "evening"]
     },
     meals: {
-      type: Type.OBJECT,
+      type: 'OBJECT',
       properties: {
         breakfast: {
-          type: Type.OBJECT,
-          properties: { name: { type: Type.STRING }, cuisine: { type: Type.STRING }, costEstimate: { type: Type.STRING }, mapsSearchPhrase: { type: Type.STRING } },
+          type: 'OBJECT',
+          properties: { name: { type: 'STRING' }, cuisine: { type: 'STRING' }, costEstimate: { type: 'STRING' }, mapsSearchPhrase: { type: 'STRING' } },
           required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"]
         },
         lunch: {
-          type: Type.OBJECT,
-          properties: { name: { type: Type.STRING }, cuisine: { type: Type.STRING }, costEstimate: { type: Type.STRING }, mapsSearchPhrase: { type: Type.STRING } },
+          type: 'OBJECT',
+          properties: { name: { type: 'STRING' }, cuisine: { type: 'STRING' }, costEstimate: { type: 'STRING' }, mapsSearchPhrase: { type: 'STRING' } },
           required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"]
         },
         dinner: {
-          type: Type.OBJECT,
-          properties: { name: { type: Type.STRING }, cuisine: { type: Type.STRING }, costEstimate: { type: Type.STRING }, mapsSearchPhrase: { type: Type.STRING } },
+          type: 'OBJECT',
+          properties: { name: { type: 'STRING' }, cuisine: { type: 'STRING' }, costEstimate: { type: 'STRING' }, mapsSearchPhrase: { type: 'STRING' } },
           required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"]
         }
       },
@@ -51,66 +52,66 @@ export const DailyItinerarySchema = {
 };
 
 export const ItineraryJsonSchema = {
-  type: Type.OBJECT,
+  type: 'OBJECT',
   properties: {
     tripSummary: {
-      type: Type.OBJECT,
+      type: 'OBJECT',
       properties: {
-        destination: { type: Type.STRING },
-        days: { type: Type.INTEGER },
-        budgetCategory: { type: Type.STRING },
-        bestSeason: { type: Type.STRING },
+        destination: { type: 'STRING' },
+        days: { type: 'INTEGER' },
+        budgetCategory: { type: 'STRING' },
+        bestSeason: { type: 'STRING' },
         currency: { 
-          type: Type.STRING,
+          type: 'STRING',
           description: "Currency SYMBOL for the destination (e.g. '$', '€', '₹', '£', '¥'). Do not use currency codes."
         },
-        language: { type: Type.STRING }
+        language: { type: 'STRING' }
       },
       required: ["destination", "days", "budgetCategory", "bestSeason", "currency", "language"]
     },
     dailyItinerary: {
-      type: Type.ARRAY,
+      type: 'ARRAY',
       items: DailyItinerarySchema
     },
     recommendedHotels: {
-      type: Type.ARRAY,
+      type: 'ARRAY',
       items: {
-        type: Type.OBJECT,
+        type: 'OBJECT',
         properties: {
-          name: { type: Type.STRING }, area: { type: Type.STRING }, tier: { type: Type.STRING }, costPerNight: { type: Type.STRING }, amenities: { type: Type.ARRAY, items: { type: Type.STRING } }
+          name: { type: 'STRING' }, area: { type: 'STRING' }, tier: { type: 'STRING' }, costPerNight: { type: 'STRING' }, amenities: { type: 'ARRAY', items: { type: 'STRING' } }
         },
         required: ["name", "area", "tier", "costPerNight", "amenities"]
       }
     },
     thingsToCarry: {
-      type: Type.OBJECT,
+      type: 'OBJECT',
       properties: {
-        documents: { type: Type.ARRAY, items: { type: Type.STRING } },
-        electronics: { type: Type.ARRAY, items: { type: Type.STRING } },
-        clothing: { type: Type.ARRAY, items: { type: Type.STRING } },
-        healthAndMedical: { type: Type.ARRAY, items: { type: Type.STRING } },
-        essentials: { type: Type.ARRAY, items: { type: Type.STRING } }
+        documents: { type: 'ARRAY', items: { type: 'STRING' } },
+        electronics: { type: 'ARRAY', items: { type: 'STRING' } },
+        clothing: { type: 'ARRAY', items: { type: 'STRING' } },
+        healthAndMedical: { type: 'ARRAY', items: { type: 'STRING' } },
+        essentials: { type: 'ARRAY', items: { type: 'STRING' } }
       },
       required: ["documents", "electronics", "clothing", "healthAndMedical", "essentials"]
     },
     safetyAndCautionTips: {
-      type: Type.OBJECT,
+      type: 'OBJECT',
       properties: {
-        localScams: { type: Type.ARRAY, items: { type: Type.STRING } },
-        weatherAndTerrain: { type: Type.ARRAY, items: { type: Type.STRING } },
-        emergencyContacts: { type: Type.ARRAY, items: { type: Type.STRING } }
+        localScams: { type: 'ARRAY', items: { type: 'STRING' } },
+        weatherAndTerrain: { type: 'ARRAY', items: { type: 'STRING' } },
+        emergencyContacts: { type: 'ARRAY', items: { type: 'STRING' } }
       },
       required: ["localScams", "weatherAndTerrain", "emergencyContacts"]
     },
     budgetBreakdown: {
-      type: Type.OBJECT,
+      type: 'OBJECT',
       properties: {
-        flightsOrTransit: { type: Type.INTEGER },
-        accommodation: { type: Type.INTEGER },
-        food: { type: Type.INTEGER },
-        activities: { type: Type.INTEGER },
-        miscellaneous: { type: Type.INTEGER },
-        totalEstimatedBudget: { type: Type.INTEGER }
+        flightsOrTransit: { type: 'INTEGER' },
+        accommodation: { type: 'INTEGER' },
+        food: { type: 'INTEGER' },
+        activities: { type: 'INTEGER' },
+        miscellaneous: { type: 'INTEGER' },
+        totalEstimatedBudget: { type: 'INTEGER' }
       },
       required: ["flightsOrTransit", "accommodation", "food", "activities", "miscellaneous", "totalEstimatedBudget"]
     }
@@ -119,15 +120,19 @@ export const ItineraryJsonSchema = {
 };
 
 export const generateItineraryFromAI = async (promptText, customSchema = ItineraryJsonSchema) => {
+  // Enforce a strict context rule ensuring the model responds with JSON
+  const targetPrompt = `${promptText}\n\nIMPORTANT: Return the response strictly as valid JSON matching the specified schema.`;
+  
   const response = await getGeminiClient().models.generateContent({
     model: 'gemini-2.5-flash',
-    contents: promptText,
+    contents: targetPrompt,
     config: { 
       responseMimeType: 'application/json', 
       responseSchema: customSchema, 
       temperature: 0.2 
     }
   });
+
   if (!response.text) throw new Error("Empty response received from Gemini engine.");
   return JSON.parse(response.text);
 };
