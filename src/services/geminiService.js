@@ -1,18 +1,15 @@
 import 'dotenv/config';
 import { GoogleGenAI } from '@google/genai';
 
-let ai = null;
-
+// Removed the static 'let ai = null;' caching pool to ensure fresh context connection handshakes
 const getGeminiClient = () => {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY is required to generate itineraries.');
   }
-
-  ai ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  return ai;
+  // Instantiating a clean instance per call ensures state-recovery if a call gets rate-limited
+  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 };
 
-// Using structural string literals instead of relying on package-level Type enum mappings
 export const DailyItinerarySchema = {
   type: 'OBJECT',
   properties: {
@@ -123,7 +120,7 @@ export const generateItineraryFromAI = async (promptText, customSchema = Itinera
   try {
     const response = await getGeminiClient().models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: `${promptText}\n\nIMPORTANT: Produce valid JSON data mapping the target parameters cleanly.`,
+      contents: `${promptText}\n\nIMPORTANT: Produce valid JSON mapping structural guidelines exactly.`,
       config: { 
         responseMimeType: 'application/json', 
         responseSchema: customSchema, 
