@@ -76,7 +76,6 @@ const AiResponseSchema = new Schema({
     emergencyContacts: [{ type: String }]
   },
   budgetBreakdown: {
-    // FIX: Set types to Number to cleanly match GoogleGenAI Type.INTEGER configuration
     flightsOrTransit: { type: Number, default: 0 },
     accommodation: { type: Number, default: 0 },
     food: { type: Number, default: 0 },
@@ -86,6 +85,6 @@ const AiResponseSchema = new Schema({
   }
 }, { timestamps: true, collection: 'aiResponses' });
 
-export const User = model('User', UserSchema);
-export const TravelDetails = model('TravelDetails', TravelDetailsSchema);
-export const AiResponse = model('AiResponse', AiResponseSchema);
+export const User = model.User || model('User', UserSchema);
+export const TravelDetails = model.TravelDetails || model('TravelDetails', TravelDetailsSchema);
+export const AiResponse = model.AiResponse || model('AiResponse', AiResponseSchema);
