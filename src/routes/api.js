@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User, TravelDetails, AiResponse } from '../models/Schemas.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { generateItineraryFromAI } from '../services/geminiService.js';
+import { generateItineraryFromAI, DailyItinerarySchema } from '../services/geminiService.js';
 
 const router = Router();
 
@@ -64,11 +64,16 @@ router.patch('/trips/:id/modify-day', authenticateToken, async (req, res) => {
     const daySchedule = currentTrip.dailyItinerary.find(d => d.day === Number(targetDay));
     if (!daySchedule) return res.status(400).json({ error: 'Target day sequence not found.' });
 
-    const prompt = `Modify Day ${targetDay} of an itinerary for ${currentTrip.tripSummary.destination}. Current: ${JSON.stringify(daySchedule)}. Instruction: "${changeInstructions}". Return a single updated dailyItinerary structural day node item.`;
-    const updatedDayJson = await generateItineraryFromAI(prompt);
-    const dynamicDayData = updatedDayJson.dailyItinerary?.[0] || updatedDayJson.dailyItinerary;
+    const prompt = `Modify Day ${targetDay} of an itinerary for ${currentTrip.tripSummary.destination}. Current data structure: ${JSON.stringify(daySchedule)}. Instruction: "${changeInstructions}". Return the complete node modified according to instructions, keeping the structure identical.`;
     
-    await AiResponse.updateOne({ _id: id, "dailyItinerary.day": Number(targetDay) }, { $set: { "dailyItinerary.$": { ...dynamicDayData, day: Number(targetDay) } } });
+    // Pass DailyItinerarySchema explicitly here to avoid generation mismatch
+    const updatedDayJson = await generateItineraryFromAI(prompt, DailyItinerarySchema);
+    
+    await AiResponse.updateOne(
+      { _id: id, "dailyItinerary.day": Number(targetDay) }, 
+      { $set: { "dailyItinerary.$": { ...updatedDayJson, day: Number(targetDay) } } }
+    );
+    
     res.status(200).json({ message: "Itinerary day altered cleanly", refreshedTrip: await AiResponse.findById(id) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
