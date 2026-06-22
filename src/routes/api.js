@@ -7,6 +7,13 @@ import { generateItineraryFromAI, generateImageBase64 } from '../services/gemini
 
 const router = Router();
 
+// Runtime presence check for GEMINI_API_KEY (do not log the key itself)
+if (!process.env.GEMINI_API_KEY) {
+  console.error('GEMINI_API_KEY is NOT set in environment');
+} else {
+  console.info('GEMINI_API_KEY is present (value hidden)');
+}
+
 // Register
 router.post('/auth/register', async (req, res) => {
   try {
@@ -42,7 +49,7 @@ router.post('/auth/login', async (req, res) => {
 router.post('/trips/generate', authenticateToken, async (req, res) => {
   try {
     const { destination, numberOfDays, budgetCategory, interests = [] } = req.body;
-    const interestList = Array.isArray(interests) ? interests : [interests].filter(Boolean);
+    const interestList = Array.isArray(interests) ? interests.filter(Boolean) : [interests].filter(Boolean);
 
     const travelDetails = await TravelDetails.create({
       userId: req.userId,
@@ -58,12 +65,19 @@ Budget: "${budgetCategory}".
 Interests: ${interestList.join(', ')}.
 Include thingsToCarry, safetyAndHealthTips, and a structured dailyItinerary.`;
 
+    // Generate itinerary JSON from AI (throws on failure)
     const structuredAiOutput = await generateItineraryFromAI(prompt);
 
     // Try to generate an image; if it fails, use a safe fallback URL
-    let destinationImageUrl = await generateImageBase64(destination);
+    let destinationImageUrl = null;
+    try {
+      destinationImageUrl = await generateImageBase64(destination);
+    } catch (imgErr) {
+      console.warn('Image generation attempt failed:', imgErr?.message || imgErr);
+      destinationImageUrl = null;
+    }
+
     if (!destinationImageUrl) {
-      // Wikimedia fallback (best-effort). Adjust or replace with your preferred placeholder.
       destinationImageUrl = `https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/${encodeURIComponent(destination)}.jpg/400px-${encodeURIComponent(destination)}.jpg`;
     }
 
@@ -79,7 +93,8 @@ Include thingsToCarry, safetyAndHealthTips, and a structured dailyItinerary.`;
 
     res.status(201).json({ travelDetails, itinerary: savedItinerary });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Failed to generate trip through AI agent:', err?.message || err);
+    res.status(500).json({ error: 'Failed to generate trip through AI agent.' });
   }
 });
 
@@ -123,6 +138,7 @@ Return a single updated dailyItinerary day node item.`;
       refreshedTrip: await AiResponse.findById(id)
     });
   } catch (err) {
+    console.error('Failed to modify itinerary day:', err?.message || err);
     res.status(500).json({ error: err.message });
   }
 });
