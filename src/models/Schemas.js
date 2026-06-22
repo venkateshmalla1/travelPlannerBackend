@@ -1,4 +1,7 @@
-import { Schema, model, models } from 'mongoose';
+import mongoose from 'mongoose';
+
+// Pull the utilities safely from the default package export
+const { Schema, model, models } = mongoose;
 
 // User Schema
 const UserSchema = new Schema({
