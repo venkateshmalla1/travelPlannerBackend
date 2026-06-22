@@ -16,13 +16,13 @@ const TravelDetailsSchema = new Schema({
   interests: [{ type: String }]
 }, { timestamps: true, collection: 'travelDetails' });
 
-// AiResponse Schema (corrected + destinationImageUrl added)
+// AiResponse Schema
 const AiResponseSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   travelDetailsId: { type: Schema.Types.ObjectId, ref: 'TravelDetails', required: true },
   tripSummary: {
     destination: { type: String, default: '' },
-    destinationImageUrl: { type: String, default: '' }, // ✅ Base64 image asset
+    destinationImageUrl: { type: String, default: '' },
     days: { type: Number, default: 0 },
     budgetCategory: { type: String, default: '' },
     bestSeason: { type: String, default: '' },
@@ -31,62 +31,28 @@ const AiResponseSchema = new Schema({
   },
   dailyItinerary: [{
     day: { type: Number, required: true },
-    schedule: { 
-      morning: { type: String, default: '' }, 
-      afternoon: { type: String, default: '' }, 
-      evening: { type: String, default: '' } 
-    },
+    schedule: { morning: String, afternoon: String, evening: String },
     meals: {
-      breakfast: { 
-        name: { type: String, default: '' }, 
-        cuisine: { type: String, default: '' }, 
-        costEstimate: { type: String, default: '' }, 
-        mapsSearchPhrase: { type: String, default: '' } 
-      },
-      lunch: { 
-        name: { type: String, default: '' }, 
-        cuisine: { type: String, default: '' }, 
-        costEstimate: { type: String, default: '' }, 
-        mapsSearchPhrase: { type: String, default: '' } 
-      },
-      dinner: { 
-        name: { type: String, default: '' }, 
-        cuisine: { type: String, default: '' }, 
-        costEstimate: { type: String, default: '' }, 
-        mapsSearchPhrase: { type: String, default: '' } 
-      }
+      breakfast: { name: String, cuisine: String, costEstimate: String, mapsSearchPhrase: String },
+      lunch: { name: String, cuisine: String, costEstimate: String, mapsSearchPhrase: String },
+      dinner: { name: String, cuisine: String, costEstimate: String, mapsSearchPhrase: String }
     }
   }],
   recommendedHotels: [{
-    name: { type: String, default: '' },
-    area: { type: String, default: '' },
-    tier: { type: String, default: '' },
-    costPerNight: { type: String, default: '' },
-    amenities: [{ type: String }]
+    name: String, area: String, tier: String, costPerNight: String, amenities: [String]
   }],
   thingsToCarry: {
-    documents: [{ type: String }],
-    electronics: [{ type: String }],
-    clothing: [{ type: String }],
-    healthAndMedical: [{ type: String }],
-    essentials: [{ type: String }]
+    documents: [String], electronics: [String], clothing: [String], healthAndMedical: [String], essentials: [String]
   },
   safetyAndCautionTips: {
-    localScams: [{ type: String }],
-    weatherAndTerrain: [{ type: String }],
-    emergencyContacts: [{ type: String }]
+    localScams: [String], weatherAndTerrain: [String], emergencyContacts: [String]
   },
   budgetBreakdown: {
-    flightsOrTransit: { type: String, default: '0' },
-    accommodation: { type: String, default: '0' },
-    food: { type: String, default: '0' },
-    activities: { type: String, default: '0' },
-    miscellaneous: { type: String, default: '0' },
-    totalEstimatedBudget: { type: String, default: '0' }
+    flightsOrTransit: String, accommodation: String, food: String, activities: String, miscellaneous: String, totalEstimatedBudget: String
   }
 }, { timestamps: true, collection: 'aiResponses' });
 
-// ✅ Proper exports
+// Exports
 export const User = model('User', UserSchema);
 export const TravelDetails = model('TravelDetails', TravelDetailsSchema);
 export const AiResponse = model('AiResponse', AiResponseSchema);
