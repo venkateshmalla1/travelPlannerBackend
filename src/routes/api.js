@@ -7,6 +7,7 @@ import { generateItineraryFromAI, DailyItinerarySchema } from '../services/gemin
 
 const router = Router();
 
+// Authentication Routes
 router.post('/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -32,18 +33,42 @@ router.post('/auth/login', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Trip Generation Endpoint
 router.post('/trips/generate', authenticateToken, async (req, res) => {
   try {
     const { destination, numberOfDays, budgetCategory, interests = [] } = req.body;
     const interestList = Array.isArray(interests) ? interests : [interests].filter(Boolean);
-    const travelDetails = await TravelDetails.create({ userId: req.userId, destination, numberOfDays, budgetCategory, interests: interestList });
+    
+    const travelDetails = await TravelDetails.create({ 
+      userId: req.userId, 
+      destination, 
+      numberOfDays, 
+      budgetCategory, 
+      interests: interestList 
+    });
 
-    const prompt = `Create a travel itinerary for "${destination}". Duration: ${numberOfDays} days. Budget: "${budgetCategory}". Interests: ${interestList.join(', ')}. Include thingsToCarry, safetyAndCautionTips, and contextually categorized hotel suggestions.`;
-    const structuredAiOutput = await generateItineraryFromAI(prompt);
+    const prompt = `Create a travel itinerary for "${destination}". Duration: ${numberOfDays} days. Budget Category: "${budgetCategory}". Target user interests are: ${interestList.join(', ')}. Populate structural fields accurately according to the JSON format constraints.`;
+    
+    // Captured Diagnostic Try Block
+    let structuredAiOutput;
+    try {
+      structuredAiOutput = await generateItineraryFromAI(prompt);
+    } catch (aiErr) {
+      console.error("CRITICAL AI ENGINE FAILURE TRACE:", aiErr);
+      return res.status(502).json({ error: "Gemini execution engine failed", details: aiErr.message });
+    }
 
-    const savedItinerary = await AiResponse.create({ userId: req.userId, travelDetailsId: travelDetails._id, ...structuredAiOutput });
+    const savedItinerary = await AiResponse.create({ 
+      userId: req.userId, 
+      travelDetailsId: travelDetails._id, 
+      ...structuredAiOutput 
+    });
+    
     res.status(201).json({ travelDetails, itinerary: savedItinerary });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { 
+    console.error("TRIPS GENERATION GENERAL MAIN ROUTE ERROR:", err);
+    res.status(500).json({ error: err.message }); 
+  }
 });
 
 router.get('/trips', authenticateToken, async (req, res) => {
@@ -64,9 +89,8 @@ router.patch('/trips/:id/modify-day', authenticateToken, async (req, res) => {
     const daySchedule = currentTrip.dailyItinerary.find(d => d.day === Number(targetDay));
     if (!daySchedule) return res.status(400).json({ error: 'Target day sequence not found.' });
 
-    const prompt = `Modify Day ${targetDay} of an itinerary for ${currentTrip.tripSummary.destination}. Current data structure: ${JSON.stringify(daySchedule)}. Instruction: "${changeInstructions}". Return the complete node modified according to instructions, keeping the structure identical.`;
+    const prompt = `Modify Day ${targetDay} of an itinerary for ${currentTrip.tripSummary.destination}. Current state: ${JSON.stringify(daySchedule)}. Instruction: "${changeInstructions}". Output a single structural node representing the updated day sequence cleanly.`;
     
-    // Pass DailyItinerarySchema explicitly here to avoid generation mismatch
     const updatedDayJson = await generateItineraryFromAI(prompt, DailyItinerarySchema);
     
     await AiResponse.updateOne(
