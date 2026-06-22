@@ -41,19 +41,11 @@ router.post('/trips/generate', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Missing required core itinerary fields." });
     }
 
-    // Capitalize properly ('low' -> 'Low') to prevent Mongoose Enum validation crashes
+    // Capitalize to prevent strict Mongoose Schema enum verification rejections ('low' -> 'Low')
     budgetCategory = budgetCategory.trim().charAt(0).toUpperCase() + budgetCategory.trim().slice(1).toLowerCase();
 
     const interestList = Array.isArray(interests) ? interests : [interests].filter(Boolean);
-    
-    // Writing validation fallback boundary safely
-    const travelDetails = await TravelDetails.create({ 
-      userId: req.userId, 
-      destination, 
-      numberOfDays: Number(numberOfDays), 
-      budgetCategory, 
-      interests: interestList 
-    });
+    const travelDetails = await TravelDetails.create({ userId: req.userId, destination, numberOfDays: Number(numberOfDays), budgetCategory, interests: interestList });
 
     const prompt = `Create a travel itinerary for "${destination}". Duration: ${numberOfDays} days. Budget: "${budgetCategory}". Interests: ${interestList.join(', ')}. Populate structural fields accurately according to the JSON format schemas.`;
     
@@ -96,7 +88,8 @@ router.patch('/trips/:id/modify-day', authenticateToken, async (req, res) => {
     
     const updatedDayJson = await generateItineraryFromAI(prompt, DailyItinerarySchema);
     
-    currentTrip.dailyItinerary[dayIndex] = { ...updatedDayJson, day: Number(targetDay) };
+    // FIX: Replaced direct object overwrite with Mongoose `.set()` to safely trigger internal change flags
+    currentTrip.dailyItinerary[dayIndex].set({ ...updatedDayJson, day: Number(targetDay) });
     await currentTrip.save();
     
     res.status(200).json({ message: "Itinerary day altered cleanly", refreshedTrip: currentTrip });
