@@ -60,8 +60,12 @@ Include thingsToCarry, safetyAndHealthTips, and a structured dailyItinerary.`;
 
     const structuredAiOutput = await generateItineraryFromAI(prompt);
 
-    // ✅ Generate destination image
-    const destinationImageUrl = await generateImageBase64(destination);
+    // Try to generate an image; if it fails, use a safe fallback URL
+    let destinationImageUrl = await generateImageBase64(destination);
+    if (!destinationImageUrl) {
+      // Wikimedia fallback (best-effort). Adjust or replace with your preferred placeholder.
+      destinationImageUrl = `https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/${encodeURIComponent(destination)}.jpg/400px-${encodeURIComponent(destination)}.jpg`;
+    }
 
     const savedItinerary = await AiResponse.create({
       userId: req.userId,
@@ -69,7 +73,7 @@ Include thingsToCarry, safetyAndHealthTips, and a structured dailyItinerary.`;
       ...structuredAiOutput,
       tripSummary: {
         ...structuredAiOutput.tripSummary,
-        destinationImageUrl: destinationImageUrl || '' // Add the generated image
+        destinationImageUrl
       }
     });
 
