@@ -12,7 +12,7 @@ const getGeminiClient = () => {
   return ai;
 };
 
-// Using robust string literals instead of the rigid Type enum
+// Using structural string literals instead of relying on package-level Type enum mappings
 export const DailyItinerarySchema = {
   type: 'OBJECT',
   properties: {
@@ -120,19 +120,20 @@ export const ItineraryJsonSchema = {
 };
 
 export const generateItineraryFromAI = async (promptText, customSchema = ItineraryJsonSchema) => {
-  // Enforce a strict context rule ensuring the model responds with JSON
-  const targetPrompt = `${promptText}\n\nIMPORTANT: Return the response strictly as valid JSON matching the specified schema.`;
-  
-  const response = await getGeminiClient().models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: targetPrompt,
-    config: { 
-      responseMimeType: 'application/json', 
-      responseSchema: customSchema, 
-      temperature: 0.2 
-    }
-  });
-
-  if (!response.text) throw new Error("Empty response received from Gemini engine.");
-  return JSON.parse(response.text);
+  try {
+    const response = await getGeminiClient().models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `${promptText}\n\nIMPORTANT: Produce valid JSON data mapping the target parameters cleanly.`,
+      config: { 
+        responseMimeType: 'application/json', 
+        responseSchema: customSchema, 
+        temperature: 0.2 
+      }
+    });
+    if (!response.text) throw new Error("Empty response received from Gemini engine.");
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("CRITICAL AI PIPELINE REJECTION TRACE:", error);
+    throw error;
+  }
 };
