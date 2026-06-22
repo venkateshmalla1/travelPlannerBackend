@@ -21,49 +21,68 @@ const AiResponseSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   travelDetailsId: { type: Schema.Types.ObjectId, ref: 'TravelDetails', required: true },
   tripSummary: {
-    destination: String,
-    destinationImageUrl: String, // ✅ Added field for base64 image asset
-    days: Number,
-    budgetCategory: String,
-    bestSeason: String,
-    currency: String,
-    language: String
+    destination: { type: String, default: '' },
+    destinationImageUrl: { type: String, default: '' }, // ✅ Base64 image asset
+    days: { type: Number, default: 0 },
+    budgetCategory: { type: String, default: '' },
+    bestSeason: { type: String, default: '' },
+    currency: { type: String, default: '' },
+    language: { type: String, default: '' }
   },
   dailyItinerary: [{
-    day: Number,
-    schedule: { morning: String, afternoon: String, evening: String },
+    day: { type: Number, required: true },
+    schedule: { 
+      morning: { type: String, default: '' }, 
+      afternoon: { type: String, default: '' }, 
+      evening: { type: String, default: '' } 
+    },
     meals: {
-      breakfast: { name: String, cuisine: String, costEstimate: String, mapsSearchPhrase: String },
-      lunch: { name: String, cuisine: String, costEstimate: String, mapsSearchPhrase: String },
-      dinner: { name: String, cuisine: String, costEstimate: String, mapsSearchPhrase: String }
+      breakfast: { 
+        name: { type: String, default: '' }, 
+        cuisine: { type: String, default: '' }, 
+        costEstimate: { type: String, default: '' }, 
+        mapsSearchPhrase: { type: String, default: '' } 
+      },
+      lunch: { 
+        name: { type: String, default: '' }, 
+        cuisine: { type: String, default: '' }, 
+        costEstimate: { type: String, default: '' }, 
+        mapsSearchPhrase: { type: String, default: '' } 
+      },
+      dinner: { 
+        name: { type: String, default: '' }, 
+        cuisine: { type: String, default: '' }, 
+        costEstimate: { type: String, default: '' }, 
+        mapsSearchPhrase: { type: String, default: '' } 
+      }
     }
   }],
   recommendedHotels: [{
-    name: String,
-    area: String,
-    tier: String,
-    costPerNight: String,
-    amenities: [String]
+    name: { type: String, default: '' },
+    area: { type: String, default: '' },
+    tier: { type: String, default: '' },
+    costPerNight: { type: String, default: '' },
+    amenities: [{ type: String }]
   }],
   thingsToCarry: {
-    documents: [String],
-    electronics: [String],
-    clothing: [String],
-    healthAndMedical: [String],
-    essentials: [String]
+    documents: [{ type: String }],
+    electronics: [{ type: String }],
+    clothing: [{ type: String }],
+    healthAndMedical: [{ type: String }],
+    essentials: [{ type: String }]
   },
   safetyAndCautionTips: {
-    localScams: [String],
-    weatherAndTerrain: [String],
-    emergencyContacts: [String]
+    localScams: [{ type: String }],
+    weatherAndTerrain: [{ type: String }],
+    emergencyContacts: [{ type: String }]
   },
   budgetBreakdown: {
-    flightsOrTransit: Number,
-    accommodation: Number,
-    food: Number,
-    activities: Number,
-    miscellaneous: Number,
-    totalEstimatedBudget: Number
+    flightsOrTransit: { type: String, default: '0' },
+    accommodation: { type: String, default: '0' },
+    food: { type: String, default: '0' },
+    activities: { type: String, default: '0' },
+    miscellaneous: { type: String, default: '0' },
+    totalEstimatedBudget: { type: String, default: '0' }
   }
 }, { timestamps: true, collection: 'aiResponses' });
 
