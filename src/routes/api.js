@@ -88,7 +88,9 @@ router.patch('/trips/:id/modify-day', authenticateToken, async (req, res) => {
       { _id: id, "dailyItinerary.day": Number(targetDay) }, 
       { $set: { "dailyItinerary.$": { ...updatedDayJson, day: Number(targetDay) } } }
     );
-    res.status(200).json({ message: "Itinerary day altered cleanly", refreshedTrip: await AiResponse.findById(id) });
+    
+    const refreshedTrip = await AiResponse.findById(id);
+    res.status(200).json({ message: "Itinerary day altered cleanly", refreshedTrip });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import { Schema, model, models } from 'mongoose';
 
 // User Schema
 const UserSchema = new Schema({
@@ -85,6 +85,6 @@ const AiResponseSchema = new Schema({
   }
 }, { timestamps: true, collection: 'aiResponses' });
 
-export const User = model.User || model('User', UserSchema);
-export const TravelDetails = model.TravelDetails || model('TravelDetails', TravelDetailsSchema);
-export const AiResponse = model.AiResponse || model('AiResponse', AiResponseSchema);
+export const User = models.User || model('User', UserSchema);
+export const TravelDetails = models.TravelDetails || model('TravelDetails', TravelDetailsSchema);
+export const AiResponse = models.AiResponse || model('AiResponse', AiResponseSchema);
