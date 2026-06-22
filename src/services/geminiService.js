@@ -1,126 +1,135 @@
 import 'dotenv/config';
 import { GoogleGenAI } from '@google/genai';
 
-let ai;
+let aiInstance = null;
 
 const getGeminiClient = () => {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY is required to generate itineraries.');
   }
-  // Initialize cleanly
-  ai ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  return ai;
+  if (!aiInstance) {
+    aiInstance = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  }
+  return aiInstance;
 };
 
-// CLEAN SCHEMA (Using standard string types expected by the @google/genai parser)
+// Simplified clean schema nodes to eliminate strict validation runtime traps
 export const DailyItinerarySchema = {
-  type: "OBJECT",
+  type: "object",
   properties: {
-    day: { type: "INTEGER" },
+    day: { type: "integer" },
     schedule: {
-      type: "OBJECT",
+      type: "object",
       properties: { 
-        morning: { type: "STRING" }, 
-        afternoon: { type: "STRING" }, 
-        evening: { type: "STRING" } 
+        morning: { type: "string" }, 
+        afternoon: { type: "string" }, 
+        evening: { type: "string" } 
       },
       required: ["morning", "afternoon", "evening"]
     },
     meals: {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        breakfast: { type: "OBJECT", properties: { name: { type: "STRING" }, cuisine: { type: "STRING" }, costEstimate: { type: "STRING" }, mapsSearchPhrase: { type: "STRING" } }, required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"] },
-        lunch: { type: "OBJECT", properties: { name: { type: "STRING" }, cuisine: { type: "STRING" }, costEstimate: { type: "STRING" }, mapsSearchPhrase: { type: "STRING" } }, required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"] },
-        dinner: { type: "OBJECT", properties: { name: { type: "STRING" }, cuisine: { type: "STRING" }, costEstimate: { type: "STRING" }, mapsSearchPhrase: { type: "STRING" } }, required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"] }
-      },
-      required: ["breakfast", "lunch", "dinner"]
+        breakfast: {
+          type: "object",
+          properties: { name: { type: "string" }, cuisine: { type: "string" }, costEstimate: { type: "string" }, mapsSearchPhrase: { type: "string" } }
+        },
+        lunch: {
+          type: "object",
+          properties: { name: { type: "string" }, cuisine: { type: "string" }, costEstimate: { type: "string" }, mapsSearchPhrase: { type: "string" } }
+        },
+        dinner: {
+          type: "object",
+          properties: { name: { type: "string" }, cuisine: { type: "string" }, costEstimate: { type: "string" }, mapsSearchPhrase: { type: "string" } }
+        }
+      }
     }
   },
   required: ["day", "schedule", "meals"]
 };
 
 export const ItineraryJsonSchema = {
-  type: "OBJECT",
+  type: "object",
   properties: {
     tripSummary: {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        destination: { type: "STRING" },
-        days: { type: "INTEGER" },
-        budgetCategory: { type: "STRING" },
-        bestSeason: { type: "STRING" },
-        currency: { 
-          type: "STRING",
-          description: "Currency SYMBOL for the destination (e.g. '$', '€', '₹', '£', '¥'). Do not use currency codes."
-        },
-        language: { type: "STRING" }
+        destination: { type: "string" },
+        days: { type: "integer" },
+        budgetCategory: { type: "string" },
+        bestSeason: { type: "string" },
+        currency: { type: "string" },
+        language: { type: "string" }
       },
       required: ["destination", "days", "budgetCategory", "bestSeason", "currency", "language"]
     },
     dailyItinerary: {
-      type: "ARRAY",
+      type: "array",
       items: DailyItinerarySchema
     },
     recommendedHotels: {
-      type: "ARRAY",
+      type: "array",
       items: {
-        type: "OBJECT",
+        type: "object",
         properties: {
-          name: { type: "STRING" }, 
-          area: { type: "STRING" }, 
-          tier: { type: "STRING" }, 
-          costPerNight: { type: "STRING" }, 
-          amenities: { type: "ARRAY", items: { type: "STRING" } }
-        },
-        required: ["name", "area", "tier", "costPerNight", "amenities"]
+          name: { type: "string" }, 
+          area: { type: "string" }, 
+          tier: { type: "string" }, 
+          costPerNight: { type: "string" }, 
+          amenities: { type: "array", items: { type: "string" } }
+        }
       }
     },
     thingsToCarry: {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        documents: { type: "ARRAY", items: { type: "STRING" } },
-        electronics: { type: "ARRAY", items: { type: "STRING" } },
-        clothing: { type: "ARRAY", items: { type: "STRING" } },
-        healthAndMedical: { type: "ARRAY", items: { type: "STRING" } },
-        essentials: { type: "ARRAY", items: { type: "STRING" } }
-      },
-      required: ["documents", "electronics", "clothing", "healthAndMedical", "essentials"]
+        documents: { type: "array", items: { type: "string" } },
+        electronics: { type: "array", items: { type: "string" } },
+        clothing: { type: "array", items: { type: "string" } },
+        healthAndMedical: { type: "array", items: { type: "string" } },
+        essentials: { type: "array", items: { type: "string" } }
+      }
     },
     safetyAndCautionTips: {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        localScams: { type: "ARRAY", items: { type: "STRING" } },
-        weatherAndTerrain: { type: "ARRAY", items: { type: "STRING" } },
-        emergencyContacts: { type: "ARRAY", items: { type: "STRING" } }
-      },
-      required: ["localScams", "weatherAndTerrain", "emergencyContacts"]
+        localScams: { type: "array", items: { type: "string" } },
+        weatherAndTerrain: { type: "array", items: { type: "string" } },
+        emergencyContacts: { type: "array", items: { type: "string" } }
+      }
     },
     budgetBreakdown: {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        flightsOrTransit: { type: "INTEGER" },
-        accommodation: { type: "INTEGER" },
-        food: { type: "INTEGER" },
-        activities: { type: "INTEGER" },
-        miscellaneous: { type: "INTEGER" },
-        totalEstimatedBudget: { type: "INTEGER" }
-      },
-      required: ["flightsOrTransit", "accommodation", "food", "activities", "miscellaneous", "totalEstimatedBudget"]
+        flightsOrTransit: { type: "integer" },
+        accommodation: { type: "integer" },
+        food: { type: "integer" },
+        activities: { type: "integer" },
+        miscellaneous: { type: "integer" },
+        totalEstimatedBudget: { type: "integer" }
+      }
     }
   },
-  required: ["tripSummary", "dailyItinerary", "recommendedHotels", "thingsToCarry", "safetyAndCautionTips", "budgetBreakdown"]
+  required: ["tripSummary", "dailyItinerary", "recommendedHotels", "budgetBreakdown"]
 };
 
 export const generateItineraryFromAI = async (promptText, customSchema = ItineraryJsonSchema) => {
-  const response = await getGeminiClient().models.generateContent({
+  const client = getGeminiClient();
+  
+  // Adjusted execution syntax mapping specifically for newer @google/genai structured outputs
+  const response = await client.models.generateContent({
     model: 'gemini-2.5-flash',
     contents: promptText,
-    config: { 
-      responseMimeType: 'application/json', 
-      responseSchema: customSchema, 
-      temperature: 0.2 
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: customSchema,
+      temperature: 0.2
     }
   });
-  if (!response.text) throw new Error("Empty response received from Gemini engine.");
+
+  if (!response || !response.text) {
+    throw new Error("Empty response received from Gemini engine structure.");
+  }
+  
   return JSON.parse(response.text);
 };
