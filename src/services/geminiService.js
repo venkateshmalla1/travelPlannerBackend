@@ -12,6 +12,31 @@ const getGeminiClient = () => {
   return ai;
 };
 
+// --- Helper function to get image from Gemini ---
+export const generateImageBase64 = async (destinationName) => {
+  try {
+    const client = getGeminiClient();
+    const prompt = `A breathtaking, stunning professional travel photography shot of ${destinationName}, showcasing landmarks and vibrant culture atmosphere.`;
+    
+    const response = await client.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: prompt,
+    });
+
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData && part.inlineData.data) {
+        const mimeType = part.inlineData.mimeType || 'image/png';
+        // Format as an inline browser-compatible Data URL
+        return `data:${mimeType};base64,${part.inlineData.data}`;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error("Failed to generate dynamic image for destination:", error.message);
+    return null; // Fallback gracefully if image limits are hit
+  }
+};
+
 export const ItineraryJsonSchema = {
   type: Type.OBJECT,
   properties: {
@@ -19,13 +44,15 @@ export const ItineraryJsonSchema = {
       type: Type.OBJECT,
       properties: {
         destination: { type: Type.STRING },
+        // ADDED: placeholder for backend injection later
+        destinationImageUrl: { type: Type.STRING, description: "Leave this as an empty string." },
         days: { type: Type.INTEGER },
         budgetCategory: { type: Type.STRING },
         bestSeason: { type: Type.STRING },
         currency: { 
-  type: Type.STRING,
-  description: "Currency SYMBOL for the destination (e.g. '$', '€', '₹', '£', '¥'). Do not use currency codes."
-},
+          type: Type.STRING,
+          description: "Currency SYMBOL for the destination (e.g. '$', '€', '₹', '£', '¥'). Do not use currency codes."
+        },
         language: { type: Type.STRING }
       },
       required: ["destination", "days", "budgetCategory", "bestSeason", "currency", "language"]
