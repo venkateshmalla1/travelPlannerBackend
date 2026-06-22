@@ -13,7 +13,6 @@ const getGeminiClient = () => {
   return aiInstance;
 };
 
-// Simplified clean schema nodes to eliminate strict validation runtime traps
 export const DailyItinerarySchema = {
   type: "object",
   properties: {
@@ -32,17 +31,21 @@ export const DailyItinerarySchema = {
       properties: {
         breakfast: {
           type: "object",
-          properties: { name: { type: "string" }, cuisine: { type: "string" }, costEstimate: { type: "string" }, mapsSearchPhrase: { type: "string" } }
+          properties: { name: { type: "string" }, cuisine: { type: "string" }, costEstimate: { type: "string" }, mapsSearchPhrase: { type: "string" } },
+          required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"]
         },
         lunch: {
           type: "object",
-          properties: { name: { type: "string" }, cuisine: { type: "string" }, costEstimate: { type: "string" }, mapsSearchPhrase: { type: "string" } }
+          properties: { name: { type: "string" }, cuisine: { type: "string" }, costEstimate: { type: "string" }, mapsSearchPhrase: { type: "string" } },
+          required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"]
         },
         dinner: {
           type: "object",
-          properties: { name: { type: "string" }, cuisine: { type: "string" }, costEstimate: { type: "string" }, mapsSearchPhrase: { type: "string" } }
+          properties: { name: { type: "string" }, cuisine: { type: "string" }, costEstimate: { type: "string" }, mapsSearchPhrase: { type: "string" } },
+          required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"]
         }
-      }
+      },
+      required: ["breakfast", "lunch", "dinner"]
     }
   },
   required: ["day", "schedule", "meals"]
@@ -58,7 +61,10 @@ export const ItineraryJsonSchema = {
         days: { type: "integer" },
         budgetCategory: { type: "string" },
         bestSeason: { type: "string" },
-        currency: { type: "string" },
+       currency: { 
+  type: Type.STRING,
+  description: "Currency SYMBOL for the destination (e.g. '$', '€', '₹', '£', '¥'). Do not use currency codes."
+},
         language: { type: "string" }
       },
       required: ["destination", "days", "budgetCategory", "bestSeason", "currency", "language"]
@@ -72,12 +78,9 @@ export const ItineraryJsonSchema = {
       items: {
         type: "object",
         properties: {
-          name: { type: "string" }, 
-          area: { type: "string" }, 
-          tier: { type: "string" }, 
-          costPerNight: { type: "string" }, 
-          amenities: { type: "array", items: { type: "string" } }
-        }
+          name: { type: "string" }, area: { type: "string" }, tier: { type: "string" }, costPerNight: { type: "string" }, amenities: { type: "array", items: { type: "string" } }
+        },
+        required: ["name", "area", "tier", "costPerNight", "amenities"]
       }
     },
     thingsToCarry: {
@@ -88,7 +91,8 @@ export const ItineraryJsonSchema = {
         clothing: { type: "array", items: { type: "string" } },
         healthAndMedical: { type: "array", items: { type: "string" } },
         essentials: { type: "array", items: { type: "string" } }
-      }
+      },
+      required: ["documents", "electronics", "clothing", "healthAndMedical", "essentials"]
     },
     safetyAndCautionTips: {
       type: "object",
@@ -96,7 +100,8 @@ export const ItineraryJsonSchema = {
         localScams: { type: "array", items: { type: "string" } },
         weatherAndTerrain: { type: "array", items: { type: "string" } },
         emergencyContacts: { type: "array", items: { type: "string" } }
-      }
+      },
+      required: ["localScams", "weatherAndTerrain", "emergencyContacts"]
     },
     budgetBreakdown: {
       type: "object",
@@ -107,29 +112,24 @@ export const ItineraryJsonSchema = {
         activities: { type: "integer" },
         miscellaneous: { type: "integer" },
         totalEstimatedBudget: { type: "integer" }
-      }
+      },
+      required: ["flightsOrTransit", "accommodation", "food", "activities", "miscellaneous", "totalEstimatedBudget"]
     }
   },
-  required: ["tripSummary", "dailyItinerary", "recommendedHotels", "budgetBreakdown"]
+  required: ["tripSummary", "dailyItinerary", "recommendedHotels", "thingsToCarry", "safetyAndCautionTips", "budgetBreakdown"]
 };
 
 export const generateItineraryFromAI = async (promptText, customSchema = ItineraryJsonSchema) => {
   const client = getGeminiClient();
-  
-  // Adjusted execution syntax mapping specifically for newer @google/genai structured outputs
   const response = await client.models.generateContent({
     model: 'gemini-2.5-flash',
     contents: promptText,
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: customSchema,
-      temperature: 0.2
+    config: { 
+      responseMimeType: 'application/json', 
+      responseSchema: customSchema, 
+      temperature: 0.2 
     }
   });
-
-  if (!response || !response.text) {
-    throw new Error("Empty response received from Gemini engine structure.");
-  }
-  
+  if (!response.text) throw new Error("Empty response received from Gemini engine.");
   return JSON.parse(response.text);
 };
