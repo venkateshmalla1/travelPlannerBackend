@@ -61,10 +61,7 @@ export const ItineraryJsonSchema = {
         days: { type: "integer" },
         budgetCategory: { type: "string" },
         bestSeason: { type: "string" },
-       currency: { 
-  type: Type.STRING,
-  description: "Currency SYMBOL for the destination (e.g. '$', '€', '₹', '£', '¥'). Do not use currency codes."
-},
+        currency: { type: "string", description: "Currency SYMBOL (e.g. $, €, ₹)" },
         language: { type: "string" }
       },
       required: ["destination", "days", "budgetCategory", "bestSeason", "currency", "language"]
