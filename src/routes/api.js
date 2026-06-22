@@ -16,7 +16,7 @@ router.post('/auth/register', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await User.create({ name, email, password: hashedPassword });
-    const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '7d' });
     res.status(201).json({ token, user: { id: newUser._id, name, email } });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -28,7 +28,7 @@ router.post('/auth/login', async (req, res) => {
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(400).json({ error: 'Invalid email or password' });
     }
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '7d' });
     res.status(200).json({ token, user: { id: user._id, name: user.name, email } });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -77,21 +77,23 @@ router.patch('/trips/:id/modify-day', authenticateToken, async (req, res) => {
     const currentTrip = await AiResponse.findOne({ _id: id, userId: req.userId });
     if (!currentTrip) return res.status(404).json({ error: 'Trip not found or access denied.' });
 
-    const daySchedule = currentTrip.dailyItinerary.find(d => d.day === Number(targetDay));
-    if (!daySchedule) return res.status(400).json({ error: 'Target day sequence not found.' });
+    const dayIndex = currentTrip.dailyItinerary.findIndex(d => d.day === Number(targetDay));
+    if (dayIndex === -1) return res.status(400).json({ error: 'Target day sequence not found.' });
 
+    const daySchedule = currentTrip.dailyItinerary[dayIndex];
     const prompt = `Modify Day ${targetDay} of an itinerary for ${currentTrip.tripSummary.destination}. Current state: ${JSON.stringify(daySchedule)}. Instruction: "${changeInstructions}". Return a single updated dailyItinerary day item node matching structural specifications.`;
     
     const updatedDayJson = await generateItineraryFromAI(prompt, DailyItinerarySchema);
     
-    await AiResponse.updateOne(
-      { _id: id, "dailyItinerary.day": Number(targetDay) }, 
-      { $set: { "dailyItinerary.$": { ...updatedDayJson, day: Number(targetDay) } } }
-    );
+    // Natively apply changes to the array item to accommodate Mongoose subdocument tracking
+    currentTrip.dailyItinerary[dayIndex] = { ...updatedDayJson, day: Number(targetDay) };
+    await currentTrip.save();
     
-    const refreshedTrip = await AiResponse.findById(id);
-    res.status(200).json({ message: "Itinerary day altered cleanly", refreshedTrip });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    res.status(200).json({ message: "Itinerary day altered cleanly", refreshedTrip: currentTrip });
+  } catch (err) { 
+    console.error("MODIFY DAY ERROR:", err);
+    res.status(500).json({ error: err.message }); 
+  }
 });
 
 export default router;
