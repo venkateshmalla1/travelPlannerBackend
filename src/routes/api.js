@@ -7,6 +7,26 @@ import { generateItineraryFromAI, DailyItinerarySchema } from '../services/gemin
 
 const router = Router();
 
+// Helper to safely catch 4XX/5XX API token limits or structural crashes
+const handleAiCall = async (res, logLabel, aiTaskPromise) => {
+  try {
+    return await aiTaskPromise;
+  } catch (aiErr) {
+    console.error(`${logLabel} FAILURE:`, aiErr);
+
+    // Extract status code if available from the API response error object (defaults to 503)
+    const statusCode = aiErr.status || aiErr.response?.status || 503;
+    
+    // Catch any 4XX (e.g. 429 Too Many Requests) or 5XX (e.g. 500 Internal Error)
+    if (statusCode >= 400 && statusCode < 600) {
+      return res.status(statusCode).json({ error: "AI is busy, please try again later" });
+    }
+    
+    // Fallback error fallback if it's an unrelated code failure
+    return res.status(500).json({ error: aiErr.message });
+  }
+};
+
 // Authentication Handling
 router.post('/auth/register', async (req, res) => {
   try {
@@ -49,19 +69,19 @@ router.post('/trips/generate', authenticateToken, async (req, res) => {
 
     const prompt = `Create a travel itinerary for "${destination}". Duration: ${numberOfDays} days. Budget: "${budgetCategory}". Interests: ${interestList.join(', ')}. Populate structural fields accurately according to the JSON format schemas.`;
     
-    let structuredAiOutput;
-    try {
-      structuredAiOutput = await generateItineraryFromAI(prompt);
-    } catch (aiErr) {
-      console.error("AI GENERATOR INTERNAL CRASH TRACE:", aiErr);
-      return res.status(502).json({ error: "Gemini AI generation failed.", details: aiErr.message });
-    }
+    // Safely execute the AI pipeline
+    const structuredAiOutput = await handleAiCall(
+      res, 
+      "AI GENERATOR INTERNAL CRASH TRACE", 
+      generateItineraryFromAI(prompt)
+    );
+    if (!structuredAiOutput || res.headersSent) return; // Stop execution if helper already responded with error
 
     const savedItinerary = await AiResponse.create({ userId: req.userId, travelDetailsId: travelDetails._id, ...structuredAiOutput });
     res.status(201).json({ travelDetails, itinerary: savedItinerary });
   } catch (err) { 
     console.error("GLOBAL SERVER BLOCK RUNTIME FAILURE:", err);
-    res.status(500).json({ error: err.message }); 
+    if (!res.headersSent) res.status(500).json({ error: err.message }); 
   }
 });
 
@@ -86,7 +106,13 @@ router.patch('/trips/:id/modify-day', authenticateToken, async (req, res) => {
     const daySchedule = currentTrip.dailyItinerary[dayIndex];
     const prompt = `Modify Day ${targetDay} of an itinerary for ${currentTrip.tripSummary.destination}. Current state: ${JSON.stringify(daySchedule)}. Instruction: "${changeInstructions}". Return a single updated dailyItinerary day item node matching structural specifications.`;
     
-    const updatedDayJson = await generateItineraryFromAI(prompt, DailyItinerarySchema);
+    // Safely execute modification AI pipeline
+    const updatedDayJson = await handleAiCall(
+      res,
+      "AI GENERATOR MODIFY DAY CRASH TRACE",
+      generateItineraryFromAI(prompt, DailyItinerarySchema)
+    );
+    if (!updatedDayJson || res.headersSent) return; // Stop execution if helper already responded with error
     
     // FIX: Replaced direct object overwrite with Mongoose `.set()` to safely trigger internal change flags
     currentTrip.dailyItinerary[dayIndex].set({ ...updatedDayJson, day: Number(targetDay) });
@@ -95,7 +121,7 @@ router.patch('/trips/:id/modify-day', authenticateToken, async (req, res) => {
     res.status(200).json({ message: "Itinerary day altered cleanly", refreshedTrip: currentTrip });
   } catch (err) { 
     console.error("MODIFY DAY ERROR:", err);
-    res.status(500).json({ error: err.message }); 
+    if (!res.headersSent) res.status(500).json({ error: err.message }); 
   }
 });
 
