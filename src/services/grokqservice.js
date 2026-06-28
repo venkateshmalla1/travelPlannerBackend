@@ -119,16 +119,19 @@ export const generateItineraryFromAI = async (promptText, customSchema = Itinera
   try {
     const groq = getGroqClient();
     
+    // Using Groq's standard structured response parameters
     const response = await groq.chat.completions.create({
-      // llama3-70b-8192 is highly reliable for structured outputs on Groq
       model: 'llama3-70b-8192', 
       messages: [
         { role: 'system', content: 'You are a professional travel planner. Always output valid JSON conforming exactly to the requested schema.' },
         { role: 'user', content: promptText }
       ],
       response_format: {
-        type: 'json_object',
-        schema: customSchema // Direct JSON Schema constraints
+        type: 'json_schema',
+        json_schema: {
+          name: "travel_itinerary",
+          schema: customSchema
+        }
       },
       temperature: 0.2
     });
