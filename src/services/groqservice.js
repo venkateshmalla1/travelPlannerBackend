@@ -110,7 +110,7 @@ export const generateItineraryFromAI = async (promptText, customSchema = Itinera
     const schemaName = customSchema === ItineraryJsonSchema ? "travel_itinerary" : "modified_day_itinerary";
 
     const response = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile', // ✅ Verified production engine for json_schema matching
+      model: 'llama-3.1-8b-instant', // ✅ Verified production engine for json_schema matching
       messages: [
         { role: 'system', content: 'You are a professional travel planner. Return a pure JSON object matching requirements exactly.' },
         { role: 'user', content: promptText }
