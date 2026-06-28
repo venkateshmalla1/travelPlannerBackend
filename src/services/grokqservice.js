@@ -1,147 +1,32 @@
-import 'dotenv/config';
-import Groq from 'groq-sdk';
+// src/services/grokqservice.js
+import Groq from "groq-sdk";
 
-const getGroqClient = () => {
-  if (!process.env.GROQ_API_KEY) {
-    throw new Error('GROQ_API_KEY is required to generate itineraries.');
-  }
-  return new Groq({ apiKey: process.env.GROQ_API_KEY });
-};
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Standard JSON schema formatting for Groq/OpenAI compatibility
-export const DailyItinerarySchema = {
-  type: 'object',
-  properties: {
-    day: { type: 'integer' },
-    schedule: {
-      type: 'object',
-      properties: { 
-        morning: { type: 'string' }, 
-        afternoon: { type: 'string' }, 
-        evening: { type: 'string' } 
-      },
-      required: ["morning", "afternoon", "evening"]
-    },
-    meals: {
-      type: 'object',
-      properties: {
-        breakfast: {
-          type: 'object',
-          properties: { name: { type: 'string' }, cuisine: { type: 'string' }, costEstimate: { type: 'string' }, mapsSearchPhrase: { type: 'string' } },
-          required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"]
-        },
-        lunch: {
-          type: 'object',
-          properties: { name: { type: 'string' }, cuisine: { type: 'string' }, costEstimate: { type: 'string' }, mapsSearchPhrase: { type: 'string' } },
-          required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"]
-        },
-        dinner: {
-          type: 'object',
-          properties: { name: { type: 'string' }, cuisine: { type: 'string' }, costEstimate: { type: 'string' }, mapsSearchPhrase: { type: 'string' } },
-          required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"]
-        }
-      },
-      required: ["breakfast", "lunch", "dinner"]
-    }
-  },
-  required: ["day", "schedule", "meals"]
-};
-
-export const ItineraryJsonSchema = {
-  type: 'object',
-  properties: {
-    tripSummary: {
-      type: 'object',
-      properties: {
-        destination: { type: 'string' },
-        days: { type: 'integer' },
-        budgetCategory: { type: 'string' },
-        bestSeason: { type: 'string' },
-        currency: { 
-          type: 'string',
-          description: "Currency SYMBOL for the destination (e.g. '$', '€', '₹'). Do not use codes."
-        },
-        language: { type: 'string' }
-      },
-      required: ["destination", "days", "budgetCategory", "bestSeason", "currency", "language"]
-    },
-    dailyItinerary: {
-      type: 'array',
-      items: DailyItinerarySchema
-    },
-    recommendedHotels: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          name: { type: 'string' }, area: { type: 'string' }, tier: { type: 'string' }, costPerNight: { type: 'string' }, amenities: { type: 'array', items: { type: 'string' } }
-        },
-        required: ["name", "area", "tier", "costPerNight", "amenities"]
-      }
-    },
-    thingsToCarry: {
-      type: 'object',
-      properties: {
-        documents: { type: 'array', items: { type: 'string' } },
-        electronics: { type: 'array', items: { type: 'string' } },
-        clothing: { type: 'array', items: { type: 'string' } },
-        healthAndMedical: { type: 'array', items: { type: 'string' } },
-        essentials: { type: 'array', items: { type: 'string' } }
-      },
-      required: ["documents", "electronics", "clothing", "healthAndMedical", "essentials"]
-    },
-    safetyAndCautionTips: {
-      type: 'object',
-      properties: {
-        localScams: { type: 'array', items: { type: 'string' } },
-        weatherAndTerrain: { type: 'array', items: { type: 'string' } },
-        emergencyContacts: { type: 'array', items: { type: 'string' } }
-      },
-      required: ["localScams", "weatherAndTerrain", "emergencyContacts"]
-    },
-    budgetBreakdown: {
-      type: 'object',
-      properties: {
-        flightsOrTransit: { type: 'integer' },
-        accommodation: { type: 'integer' },
-        food: { type: 'integer' },
-        activities: { type: 'integer' },
-        miscellaneous: { type: 'integer' },
-        totalEstimatedBudget: { type: 'integer' }
-      },
-      required: ["flightsOrTransit", "accommodation", "food", "activities", "miscellaneous", "totalEstimatedBudget"]
-    }
-  },
-  required: ["tripSummary", "dailyItinerary", "recommendedHotels", "thingsToCarry", "safetyAndCautionTips", "budgetBreakdown"]
-};
-
-export const generateItineraryFromAI = async (promptText, customSchema = ItineraryJsonSchema) => {
+export async function generateItineraryFromAI(destination, days, budgetCategory) {
   try {
-    const groq = getGroqClient();
-    
-    // Using Groq's standard structured response parameters
     const response = await groq.chat.completions.create({
-      model: 'llama3-70b-8192', 
+      model: "llama-3.1-70b-versatile",   // ✅ updated model
       messages: [
-        { role: 'system', content: 'You are a professional travel planner. Always output valid JSON conforming exactly to the requested schema.' },
-        { role: 'user', content: promptText }
-      ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: "travel_itinerary",
-          schema: customSchema
+        {
+          role: "system",
+          content: "You are a travel planner AI. Generate a detailed itinerary."
+        },
+        {
+          role: "user",
+          content: `Plan a ${days}-day trip to ${destination} with a ${budgetCategory} budget. 
+                    Include trip summary, daily itinerary, recommended hotels, and activities.`
         }
-      },
-      temperature: 0.2
+      ],
+      temperature: 0.7,
+      max_tokens: 1024
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) throw new Error("Empty response received from Groq engine.");
-    
-    return JSON.parse(content);
-  } catch (error) {
-    console.error("CRITICAL AI PIPELINE REJECTION TRACE:", error);
-    throw error;
+    // Extract AI response
+    const itineraryText = response.choices[0].message.content;
+    return JSON.parse(itineraryText); // assuming your AI returns JSON
+  } catch (err) {
+    console.error("AI itinerary generation failed:", err);
+    throw err;
   }
-};
+}
