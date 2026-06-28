@@ -27,17 +27,32 @@ export const DailyItinerarySchema = {
       properties: {
         breakfast: {
           type: 'object',
-          properties: { name: { type: 'string' }, cuisine: { type: 'string' }, costEstimate: { type: 'string' }, mapsSearchPhrase: { type: 'string' } },
+          properties: { 
+            name: { type: 'string' }, 
+            cuisine: { type: 'string' }, 
+            costEstimate: { type: 'string' }, 
+            mapsSearchPhrase: { type: 'string' } 
+          },
           required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"]
         },
         lunch: {
           type: 'object',
-          properties: { name: { type: 'string' }, cuisine: { type: 'string' }, costEstimate: { type: 'string' }, mapsSearchPhrase: { type: 'string' } },
+          properties: { 
+            name: { type: 'string' }, 
+            cuisine: { type: 'string' }, 
+            costEstimate: { type: 'string' }, 
+            mapsSearchPhrase: { type: 'string' } 
+          },
           required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"]
         },
         dinner: {
           type: 'object',
-          properties: { name: { type: 'string' }, cuisine: { type: 'string' }, costEstimate: { type: 'string' }, mapsSearchPhrase: { type: 'string' } },
+          properties: { 
+            name: { type: 'string' }, 
+            cuisine: { type: 'string' }, 
+            costEstimate: { type: 'string' }, 
+            mapsSearchPhrase: { type: 'string' } 
+          },
           required: ["name", "cuisine", "costEstimate", "mapsSearchPhrase"]
         }
       },
@@ -68,7 +83,11 @@ export const ItineraryJsonSchema = {
       items: {
         type: 'object',
         properties: {
-          name: { type: 'string' }, area: { type: 'string' }, tier: { type: 'string' }, costPerNight: { type: 'string' }, amenities: { type: 'array', items: { type: 'string' } }
+          name: { type: 'string' }, 
+          area: { type: 'string' }, 
+          tier: { type: 'string' }, 
+          costPerNight: { type: 'string' }, 
+          amenities: { type: 'array', items: { type: 'string' } }
         },
         required: ["name", "area", "tier", "costPerNight", "amenities"]
       }
@@ -96,7 +115,12 @@ export const ItineraryJsonSchema = {
     budgetBreakdown: {
       type: 'object',
       properties: {
-        flightsOrTransit: { type: 'integer' }, accommodation: { type: 'integer' }, food: { type: 'integer' }, activities: { type: 'integer' }, miscellaneous: { type: 'integer' }, totalEstimatedBudget: { type: 'integer' }
+        flightsOrTransit: { type: 'integer' }, 
+        accommodation: { type: 'integer' }, 
+        food: { type: 'integer' }, 
+        activities: { type: 'integer' }, 
+        miscellaneous: { type: 'integer' }, 
+        totalEstimatedBudget: { type: 'integer' }
       },
       required: ["flightsOrTransit", "accommodation", "food", "activities", "miscellaneous", "totalEstimatedBudget"]
     }
@@ -110,23 +134,69 @@ export const generateItineraryFromAI = async (promptText, customSchema = Itinera
     const schemaName = customSchema === ItineraryJsonSchema ? "travel_itinerary" : "modified_day_itinerary";
 
     const response = await groq.chat.completions.create({
-      model: 'llama-3.1-8b-instant', // ✅ Verified production engine for json_schema matching
+      // ✅ Changed to a model that supports json_schema
+      model: 'openai/gpt-oss-20b',
+      
       messages: [
-        { role: 'system', content: 'You are a professional travel planner. Return a pure JSON object matching requirements exactly.' },
+        { 
+          role: 'system', 
+          content: 'You are a professional travel planner. Return a pure JSON object matching the schema exactly. Do not add any extra text, explanations, or markdown.' 
+        },
         { role: 'user', content: promptText }
       ],
+      
       response_format: {
         type: 'json_schema',
-        json_schema: { name: schemaName, schema: customSchema }
+        json_schema: { 
+          name: schemaName, 
+          strict: true,                    // Best when using supported models
+          schema: customSchema 
+        }
       },
       temperature: 0.2
     });
 
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error("Empty response received from Groq engine.");
+
     return JSON.parse(content);
   } catch (error) {
     console.error("CRITICAL AI PIPELINE REJECTION TRACE:", error);
+
+    // Fallback to json_object mode if json_schema is not supported
+    if (error?.message?.includes('json_schema') || error?.status === 400) {
+      console.warn("json_schema not supported. Falling back to json_object mode...");
+      return await fallbackJsonGeneration(promptText);
+    }
+
     throw error;
+  }
+};
+
+// Fallback function using json_object (works on most models including llama-3.1-8b-instant)
+const fallbackJsonGeneration = async (promptText) => {
+  try {
+    const groq = getGroqClient();
+
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'You are a professional travel planner. Respond ONLY with valid JSON matching the exact structure requested in the user message. No extra text.' 
+        },
+        { role: 'user', content: promptText }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.2
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("Empty response in fallback mode.");
+
+    return JSON.parse(content);
+  } catch (fallbackError) {
+    console.error("Fallback also failed:", fallbackError);
+    throw fallbackError;
   }
 };
