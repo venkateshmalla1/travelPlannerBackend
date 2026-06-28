@@ -9,12 +9,12 @@ const getGroqClient = () => {
   }
   groq ??= new OpenAI({
     apiKey: process.env.GROQ_API_KEY,
-    baseURL: "https://api.groq.com/openai/v1"   // ✅ Groq’s OpenAI-compatible endpoint
+    baseURL: "https://api.groq.com/openai/v1"
   });
   return groq;
 };
 
-// ✅ Exported DailyItinerarySchema
+// ✅ Schemas
 export const DailyItinerarySchema = {
   type: 'object',
   properties: {
@@ -44,7 +44,6 @@ export const DailyItinerarySchema = {
   additionalProperties: false
 };
 
-// ✅ Exported ItineraryJsonSchema with currency descriptions
 export const ItineraryJsonSchema = {
   type: 'object',
   properties: {
@@ -56,8 +55,8 @@ export const ItineraryJsonSchema = {
         budgetCategory: { type: 'string' },
         travelType: { type: 'string' },
         bestSeason: { type: 'string' },
-        currency: { type: 'string', description: "Currency code (e.g. 'USD', 'INR')" },
-        currencySymbol: { type: 'string', description: "Currency SYMBOL only (e.g. '$', '₹', '€', '£'). Do not return currency names." },
+        currency: { type: 'string' },
+        currencySymbol: { type: 'string' },
         language: { type: 'string' }
       },
       required: ["destination", "days", "budgetCategory", "bestSeason", "currency", "currencySymbol", "language"],
@@ -89,6 +88,7 @@ export const ItineraryJsonSchema = {
         healthAndMedical: { type: 'array', items: { type: 'string' } },
         essentials: { type: 'array', items: { type: 'string' } }
       },
+      required: ["documents", "electronics", "clothing", "healthAndMedical", "essentials"],
       additionalProperties: false
     },
     safetyAndCautionTips: {
@@ -98,12 +98,13 @@ export const ItineraryJsonSchema = {
         weatherAndTerrain: { type: 'array', items: { type: 'string' } },
         emergencyContacts: { type: 'array', items: { type: 'string' } }
       },
+      required: ["localScams", "weatherAndTerrain", "emergencyContacts"],
       additionalProperties: false
     },
     budgetBreakdown: {
       type: 'object',
       properties: {
-        currency: { type: 'string', description: "Currency SYMBOL only (e.g. '$', '₹', '€', '£')" },
+        currency: { type: 'string' },
         flightsOrTransit: { type: 'integer' },
         accommodation: { type: 'integer' },
         food: { type: 'integer' },
@@ -119,26 +120,37 @@ export const ItineraryJsonSchema = {
   additionalProperties: false
 };
 
-// ✅ Exported generator function using Groq’s OpenAI-compatible client
 export const generateItineraryFromAI = async (promptText, customSchema = ItineraryJsonSchema) => {
   try {
-    const groq = getGroqClient();
+    const client = getGroqClient();
 
-    const response = await groq.responses.create({
-      model: "openai/gpt-oss-20b", // ✅ Groq’s OpenAI-compatible model
-      input: `You are an expert travel planner. Return ONLY a valid JSON object that matches the schema.
+    const response = await client.chat.completions.create({
+      model: "llama-3.1-8b-instant",           // Best balance for token limits
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert travel planner. Respond with ONLY a valid JSON object matching the schema exactly.
+Include all required fields. Use realistic data.
+
 Rules:
-- tripSummary.currency must be the currency code (e.g. USD, INR).
-- tripSummary.currencySymbol must be the symbol (e.g. $, ₹).
-- budgetBreakdown.currency must also be a symbol.
-Do not return words like "USD" or "INR" in currencySymbol.
-
-User prompt: ${promptText}`,
-      response_format: { type: "json_object" }
+- tripSummary.currency = currency code (e.g. "USD", "INR")
+- tripSummary.currencySymbol = symbol only (e.g. "$", "₹", "€")
+- budgetBreakdown.currency = symbol only`
+        },
+        {
+          role: "user",
+          content: promptText
+        }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+      max_tokens: 6000
     });
 
-    if (!response.output_text) throw new Error("Empty response from Groq.");
-    return JSON.parse(response.output_text);
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("Empty response from Groq.");
+
+    return JSON.parse(content);
 
   } catch (error) {
     console.error("CRITICAL AI PIPELINE REJECTION TRACE:", error);
