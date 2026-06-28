@@ -9,16 +9,19 @@ const UserSchema = new Schema({
   password: { type: String, required: true }
 }, { timestamps: true, collection: 'userData' });
 
-// Travel Details Schema
+// Travel Details Schema (Modified with TTL)
 const TravelDetailsSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   destination: { type: String, required: true },
   numberOfDays: { type: Number, required: true },
   budgetCategory: { type: String, enum: ['Low', 'Medium', 'High'], required: true },
-  interests: [{ type: String }]
+  interests: [{ type: String }],
+  
+  // ✨ TWEAK: Automatically deletes this document 24 hours after creation
+  createdAt: { type: Date, default: Date.now, expires: '1d' } 
 }, { timestamps: true, collection: 'travelDetails' });
 
-// AiResponse Schema
+// AiResponse Schema (Modified with TTL)
 const AiResponseSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   travelDetailsId: { type: Schema.Types.ObjectId, ref: 'TravelDetails', required: true },
@@ -32,59 +35,28 @@ const AiResponseSchema = new Schema({
   },
   dailyItinerary: [{
     day: { type: Number, required: true },
-    schedule: { 
-      morning: { type: String, default: '' }, 
-      afternoon: { type: String, default: '' }, 
-      evening: { type: String, default: '' } 
-    },
+    schedule: { morning: { type: String, default: '' }, afternoon: { type: String, default: '' }, evening: { type: String, default: '' } },
     meals: {
-      breakfast: { 
-        name: { type: String, default: '' }, 
-        cuisine: { type: String, default: '' }, 
-        costEstimate: { type: String, default: '' }, 
-        mapsSearchPhrase: { type: String, default: '' } 
-      },
-      lunch: { 
-        name: { type: String, default: '' }, 
-        cuisine: { type: String, default: '' }, 
-        costEstimate: { type: String, default: '' }, 
-        mapsSearchPhrase: { type: String, default: '' } 
-      },
-      dinner: { 
-        name: { type: String, default: '' }, 
-        cuisine: { type: String, default: '' }, 
-        costEstimate: { type: String, default: '' }, 
-        mapsSearchPhrase: { type: String, default: '' } 
-      }
+      breakfast: { name: { type: String, default: '' }, cuisine: { type: String, default: '' }, costEstimate: { type: String, default: '' }, mapsSearchPhrase: { type: String, default: '' } },
+      lunch: { name: { type: String, default: '' }, cuisine: { type: String, default: '' }, costEstimate: { type: String, default: '' }, mapsSearchPhrase: { type: String, default: '' } },
+      dinner: { name: { type: String, default: '' }, cuisine: { type: String, default: '' }, costEstimate: { type: String, default: '' }, mapsSearchPhrase: { type: String, default: '' } }
     }
   }],
   recommendedHotels: [{
-    name: { type: String, default: '' },
-    area: { type: String, default: '' },
-    tier: { type: String, default: '' },
-    costPerNight: { type: String, default: '' },
-    amenities: [{ type: String }]
+    name: { type: String, default: '' }, area: { type: String, default: '' }, tier: { type: String, default: '' }, costPerNight: { type: String, default: '' }, amenities: [{ type: String }]
   }],
   thingsToCarry: {
-    documents: [{ type: String }],
-    electronics: [{ type: String }],
-    clothing: [{ type: String }],
-    healthAndMedical: [{ type: String }],
-    essentials: [{ type: String }]
+    documents: [{ type: String }], electronics: [{ type: String }], clothing: [{ type: String }], healthAndMedical: [{ type: String }], essentials: [{ type: String }]
   },
   safetyAndCautionTips: {
-    localScams: [{ type: String }],
-    weatherAndTerrain: [{ type: String }],
-    emergencyContacts: [{ type: String }]
+    localScams: [{ type: String }], weatherAndTerrain: [{ type: String }], emergencyContacts: [{ type: String }]
   },
   budgetBreakdown: {
-    flightsOrTransit: { type: Number, default: 0 },
-    accommodation: { type: Number, default: 0 },
-    food: { type: Number, default: 0 },
-    activities: { type: Number, default: 0 },
-    miscellaneous: { type: Number, default: 0 },
-    totalEstimatedBudget: { type: Number, default: 0 }
-  }
+    flightsOrTransit: { type: Number, default: 0 }, accommodation: { type: Number, default: 0 }, food: { type: Number, default: 0 }, activities: { type: Number, default: 0 }, miscellaneous: { type: Number, default: 0 }, totalEstimatedBudget: { type: Number, default: 0 }
+  },
+  
+  // ✨ TWEAK: Automatically deletes this document 24 hours after creation
+  createdAt: { type: Date, default: Date.now, expires: '1d' }
 }, { timestamps: true, collection: 'aiResponses' });
 
 export const User = models.User || model('User', UserSchema);

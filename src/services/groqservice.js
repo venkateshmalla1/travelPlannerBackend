@@ -8,7 +8,6 @@ const getGroqClient = () => {
   return new Groq({ apiKey: process.env.GROQ_API_KEY });
 };
 
-// Groq schema types must be standard lowercase strings ('object', 'string', 'integer', 'array')
 export const DailyItinerarySchema = {
   type: 'object',
   properties: {
@@ -57,18 +56,12 @@ export const ItineraryJsonSchema = {
         days: { type: 'integer' },
         budgetCategory: { type: 'string' },
         bestSeason: { type: 'string' },
-        currency: { 
-          type: 'string',
-          description: "Currency SYMBOL for the destination (e.g. '$', '€', '₹'). Do not use alphanumeric currency codes."
-        },
+        currency: { type: 'string', description: "Currency SYMBOL (e.g. '$', '₹')." },
         language: { type: 'string' }
       },
       required: ["destination", "days", "budgetCategory", "bestSeason", "currency", "language"]
     },
-    dailyItinerary: {
-      type: 'array',
-      items: DailyItinerarySchema
-    },
+    dailyItinerary: { type: 'array', items: DailyItinerarySchema },
     recommendedHotels: {
       type: 'array',
       items: {
@@ -102,12 +95,7 @@ export const ItineraryJsonSchema = {
     budgetBreakdown: {
       type: 'object',
       properties: {
-        flightsOrTransit: { type: 'integer' },
-        accommodation: { type: 'integer' },
-        food: { type: 'integer' },
-        activities: { type: 'integer' },
-        miscellaneous: { type: 'integer' },
-        totalEstimatedBudget: { type: 'integer' }
+        flightsOrTransit: { type: 'integer' }, accommodation: { type: 'integer' }, food: { type: 'integer' }, activities: { type: 'integer' }, miscellaneous: { type: 'integer' }, totalEstimatedBudget: { type: 'integer' }
       },
       required: ["flightsOrTransit", "accommodation", "food", "activities", "miscellaneous", "totalEstimatedBudget"]
     }
@@ -115,43 +103,26 @@ export const ItineraryJsonSchema = {
   required: ["tripSummary", "dailyItinerary", "recommendedHotels", "thingsToCarry", "safetyAndCautionTips", "budgetBreakdown"]
 };
 
-/**
- * Generates structured travel data from Groq utilizing strict JSON schema enforcement.
- * @param {string} promptText - The prompt containing user travel preferences or modification context.
- * @param {object} customSchema - Defaults to the entire multi-day layout, or can accept DailyItinerarySchema for single-day modifications.
- */
 export const generateItineraryFromAI = async (promptText, customSchema = ItineraryJsonSchema) => {
   try {
     const groq = getGroqClient();
-    
-    // Dynamically derive a schema name configuration depending on the applied layout context
     const schemaName = customSchema === ItineraryJsonSchema ? "travel_itinerary" : "modified_day_itinerary";
 
     const response = await groq.chat.completions.create({
-      model: 'llama3-70b-8192', 
+      model: 'llama-3.3-70b-versatile', // ✅ Swapped to highly structured compatible baseline
       messages: [
-        { 
-          role: 'system', 
-          content: 'You are an elite, professional travel planner. Return a pure, unadorned JSON object conforming structurally to the strict schema provided. Avoid all markdown wrappers or chat prefaces.' 
-        },
-        { 
-          role: 'user', 
-          content: promptText 
-        }
+        { role: 'system', content: 'You are a professional travel planner. Return a pure JSON object matching requirements exactly.' },
+        { role: 'user', content: promptText }
       ],
       response_format: {
         type: 'json_schema',
-        json_schema: {
-          name: schemaName,
-          schema: customSchema
-        }
+        json_schema: { name: schemaName, schema: customSchema }
       },
-      temperature: 0.2 // Lowered for precise data adherence and structural stability
+      temperature: 0.2
     });
 
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error("Empty response received from Groq engine.");
-    
     return JSON.parse(content);
   } catch (error) {
     console.error("CRITICAL AI PIPELINE REJECTION TRACE:", error);
