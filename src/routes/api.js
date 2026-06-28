@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User, TravelDetails, AiResponse } from '../models/Schemas.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { generateItineraryFromAI, DailyItinerarySchema } from '../services/geminiService.js';
+import { generateItineraryFromAI, DailyItinerarySchema } from '../services/grokqservice.js';
 
 const router = Router();
 
