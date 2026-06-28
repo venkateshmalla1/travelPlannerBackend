@@ -12,7 +12,8 @@ const handleAiCall = async (res, logLabel, aiTaskPromise) => {
     return await aiTaskPromise;
   } catch (aiErr) {
     console.error(`${logLabel} FAILURE:`, aiErr);
-    return res.status(503).json({ error: "AI processing capacity is busy, please try again shortly." });
+    res.status(503).json({ error: "AI processing capacity is busy, please try again shortly." });
+    return null; // ✅ Returns explicitly clear value to intercept downstream routes execution
   }
 };
 
@@ -59,11 +60,14 @@ router.post('/trips/generate', authenticateToken, async (req, res) => {
 
     const prompt = `Create an exhaustive travel itinerary for destination: "${destination}". Duration: ${numberOfDays} days. Budget Profile: "${budgetCategory}". Interests: ${interests}.`;
     const structuredAiOutput = await handleAiCall(res, "GENERATOR", generateItineraryFromAI(prompt));
-    if (!structuredAiOutput) return;
+    
+    if (!structuredAiOutput) return; // ✅ Short circuit logic loop to prevent cascading blocks
 
     const savedItinerary = await AiResponse.create({ userId: req.userId, travelDetailsId: travelDetails._id, ...structuredAiOutput });
     res.status(201).json({ travelDetails, itinerary: savedItinerary });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { 
+    if (!res.headersSent) res.status(500).json({ error: err.message }); 
+  }
 });
 
 router.get('/trips', authenticateToken, async (req, res) => {
@@ -85,14 +89,16 @@ router.patch('/trips/:id/modify-day', authenticateToken, async (req, res) => {
     if (dayIndex === -1) return res.status(400).json({ error: 'Target day sequence index out of bounds.' });
 
     const prompt = `Modify Day ${targetDay} of itinerary for ${currentTrip.tripSummary.destination}. Current state: ${JSON.stringify(currentTrip.dailyItinerary[dayIndex])}. Adjustment instruction: "${changeInstructions}".`;
-    // ✅ Passes specialized single day schema layout variant to optimize performance and prevent array compilation blocks
     const updatedDayJson = await handleAiCall(res, "MODIFY_DAY", generateItineraryFromAI(prompt, DailyItinerarySchema));
-    if (!updatedDayJson) return;
+    
+    if (!updatedDayJson) return; // ✅ Prevents downstream modifications if error is thrown
 
     currentTrip.dailyItinerary[dayIndex].set({ ...updatedDayJson, day: Number(targetDay) });
     await currentTrip.save();
     res.status(200).json({ message: "Itinerary day modified clean.", refreshedTrip: currentTrip });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { 
+    if (!res.headersSent) res.status(500).json({ error: err.message }); 
+  }
 });
 
 export default router;

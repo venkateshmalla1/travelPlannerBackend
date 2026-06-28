@@ -2,14 +2,12 @@ import mongoose from 'mongoose';
 
 const { Schema, model, models } = mongoose;
 
-// User Schema
 const UserSchema = new Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, lowercase: true },
   password: { type: String, required: true }
 }, { timestamps: true, collection: 'userData' });
 
-// Travel Details Schema (Modified with TTL)
 const TravelDetailsSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   destination: { type: String, required: true },
@@ -17,11 +15,10 @@ const TravelDetailsSchema = new Schema({
   budgetCategory: { type: String, enum: ['Low', 'Medium', 'High'], required: true },
   interests: [{ type: String }],
   
-  // ✨ TWEAK: Automatically deletes this document 24 hours after creation
-  createdAt: { type: Date, default: Date.now, expires: '1d' } 
+  // ⚡ TTL INDEX: Deletes document automatically 1 day (24 hours) after generation trace
+  createdAt: { type: Date, default: Date.now, expires: '1d' }
 }, { timestamps: true, collection: 'travelDetails' });
 
-// AiResponse Schema (Modified with TTL)
 const AiResponseSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   travelDetailsId: { type: Schema.Types.ObjectId, ref: 'TravelDetails', required: true },
@@ -55,7 +52,7 @@ const AiResponseSchema = new Schema({
     flightsOrTransit: { type: Number, default: 0 }, accommodation: { type: Number, default: 0 }, food: { type: Number, default: 0 }, activities: { type: Number, default: 0 }, miscellaneous: { type: Number, default: 0 }, totalEstimatedBudget: { type: Number, default: 0 }
   },
   
-  // ✨ TWEAK: Automatically deletes this document 24 hours after creation
+  // ⚡ TTL INDEX: Deletes document automatically 1 day (24 hours) after generation trace
   createdAt: { type: Date, default: Date.now, expires: '1d' }
 }, { timestamps: true, collection: 'aiResponses' });
 

@@ -8,6 +8,7 @@ const getGroqClient = () => {
   return new Groq({ apiKey: process.env.GROQ_API_KEY });
 };
 
+// Groq schema types must be standard lowercase strings ('object', 'string', 'integer', 'array')
 export const DailyItinerarySchema = {
   type: 'object',
   properties: {
@@ -109,7 +110,7 @@ export const generateItineraryFromAI = async (promptText, customSchema = Itinera
     const schemaName = customSchema === ItineraryJsonSchema ? "travel_itinerary" : "modified_day_itinerary";
 
     const response = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile', // ✅ Swapped to highly structured compatible baseline
+      model: 'llama-3.3-70b-versatile', // ✅ Verified production engine for json_schema matching
       messages: [
         { role: 'system', content: 'You are a professional travel planner. Return a pure JSON object matching requirements exactly.' },
         { role: 'user', content: promptText }
