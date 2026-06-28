@@ -8,7 +8,7 @@ const getGroqClient = () => {
   return new Groq({ apiKey: process.env.GROQ_API_KEY });
 };
 
-// Updated schemas with additionalProperties: false for strict mode
+// Schemas with additionalProperties: false (required for strict mode)
 export const DailyItinerarySchema = {
   type: 'object',
   properties: {
@@ -78,7 +78,7 @@ export const ItineraryJsonSchema = {
         days: { type: 'integer' },
         budgetCategory: { type: 'string' },
         bestSeason: { type: 'string' },
-        currency: { type: 'string', description: "Currency SYMBOL (e.g. '$', '₹')." },
+        currency: { type: 'string' },
         language: { type: 'string' }
       },
       required: ["destination", "days", "budgetCategory", "bestSeason", "currency", "language"],
@@ -153,7 +153,17 @@ export const generateItineraryFromAI = async (promptText, customSchema = Itinera
       messages: [
         { 
           role: 'system', 
-          content: 'You are a professional travel planner. Return a pure JSON object matching the schema exactly. Do not add any extra text, explanations, or markdown.' 
+          content: `You are an expert travel planner. Generate a COMPLETE itinerary.
+
+You MUST return a valid JSON object that includes ALL these top-level keys:
+- tripSummary
+- dailyItinerary (array)
+- recommendedHotels (array)
+- thingsToCarry (object)
+- safetyAndCautionTips (object)
+- budgetBreakdown (object)
+
+Do not omit any section. Fill reasonable data for all fields.` 
         },
         { role: 'user', content: promptText }
       ],
@@ -165,18 +175,19 @@ export const generateItineraryFromAI = async (promptText, customSchema = Itinera
           schema: customSchema 
         }
       },
-      temperature: 0.2
+      temperature: 0.3,        // Slightly increased for better creativity
+      max_tokens: 8000
     });
 
     const content = response.choices[0]?.message?.content;
-    if (!content) throw new Error("Empty response received from Groq engine.");
+    if (!content) throw new Error("Empty response from Groq.");
 
     return JSON.parse(content);
   } catch (error) {
     console.error("CRITICAL AI PIPELINE REJECTION TRACE:", error);
 
     if (error?.message?.includes('json_schema') || error?.status === 400) {
-      console.warn("json_schema not supported. Falling back to json_object mode...");
+      console.warn("json_schema failed. Falling back to json_object mode...");
       return await fallbackJsonGeneration(promptText);
     }
 
@@ -184,29 +195,28 @@ export const generateItineraryFromAI = async (promptText, customSchema = Itinera
   }
 };
 
+// Fallback
 const fallbackJsonGeneration = async (promptText) => {
-  try {
-    const groq = getGroqClient();
+  const groq = getGroqClient();
 
-    const response = await groq.chat.completions.create({
-      model: 'llama-3.1-8b-instant',
-      messages: [
-        { 
-          role: 'system', 
-          content: 'You are a professional travel planner. Respond ONLY with valid JSON matching the exact structure requested. No extra text.' 
-        },
-        { role: 'user', content: promptText }
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.2
-    });
+  const response = await groq.chat.completions.create({
+    model: 'llama-3.1-8b-instant',
+    messages: [
+      { 
+        role: 'system', 
+        content: `You are an expert travel planner. Return ONLY a complete valid JSON object with these exact top-level keys: 
+tripSummary, dailyItinerary, recommendedHotels, thingsToCarry, safetyAndCautionTips, budgetBreakdown.
+Do not miss any section.` 
+      },
+      { role: 'user', content: promptText }
+    ],
+    response_format: { type: 'json_object' },
+    temperature: 0.3,
+    max_tokens: 8000
+  });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) throw new Error("Empty response in fallback mode.");
-
-    return JSON.parse(content);
-  } catch (fallbackError) {
-    console.error("Fallback also failed:", fallbackError);
-    throw fallbackError;
-  }
+  const content = response.choices[0]?.message?.content;
+  if (!content) throw new Error("Empty fallback response.");
+  
+  return JSON.parse(content);
 };
