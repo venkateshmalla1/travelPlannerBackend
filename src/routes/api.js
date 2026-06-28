@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User, TravelDetails, AiResponse } from '../models/Schemas.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { generateItineraryFromAI } from '../services/grokqservice.js';  // ✅ removed DailyItinerarySchema
+import { generateItineraryFromAI } from '../services/groqservice.js';
 
 const router = Router();
 
@@ -21,7 +21,7 @@ const handleAiCall = async (res, logLabel, aiTaskPromise) => {
   }
 };
 
-// Authentication
+// Authentication routes
 router.post('/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
