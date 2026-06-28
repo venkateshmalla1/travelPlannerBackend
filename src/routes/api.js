@@ -13,7 +13,7 @@ const handleAiCall = async (res, logLabel, aiTaskPromise) => {
   } catch (aiErr) {
     console.error(`${logLabel} FAILURE:`, aiErr);
     res.status(503).json({ error: "AI processing capacity is busy, please try again shortly." });
-    return null; // ✅ Returns explicitly clear value to intercept downstream routes execution
+    return null;
   }
 };
 
@@ -61,7 +61,7 @@ router.post('/trips/generate', authenticateToken, async (req, res) => {
     const prompt = `Create an exhaustive travel itinerary for destination: "${destination}". Duration: ${numberOfDays} days. Budget Profile: "${budgetCategory}". Interests: ${interests}.`;
     const structuredAiOutput = await handleAiCall(res, "GENERATOR", generateItineraryFromAI(prompt));
     
-    if (!structuredAiOutput) return; // ✅ Short circuit logic loop to prevent cascading blocks
+    if (!structuredAiOutput) return;
 
     const savedItinerary = await AiResponse.create({ userId: req.userId, travelDetailsId: travelDetails._id, ...structuredAiOutput });
     res.status(201).json({ travelDetails, itinerary: savedItinerary });
@@ -91,9 +91,12 @@ router.patch('/trips/:id/modify-day', authenticateToken, async (req, res) => {
     const prompt = `Modify Day ${targetDay} of itinerary for ${currentTrip.tripSummary.destination}. Current state: ${JSON.stringify(currentTrip.dailyItinerary[dayIndex])}. Adjustment instruction: "${changeInstructions}".`;
     const updatedDayJson = await handleAiCall(res, "MODIFY_DAY", generateItineraryFromAI(prompt, DailyItinerarySchema));
     
-    if (!updatedDayJson) return; // ✅ Prevents downstream modifications if error is thrown
+    if (!updatedDayJson) return;
 
-    currentTrip.dailyItinerary[dayIndex].set({ ...updatedDayJson, day: Number(targetDay) });
+    // ✅ Normalize AI output: unwrap if nested inside dailyItinerary
+    const dynamicDayData = updatedDayJson.dailyItinerary?.[0] || updatedDayJson;
+
+    currentTrip.dailyItinerary[dayIndex].set({ ...dynamicDayData, day: Number(targetDay) });
     await currentTrip.save();
     res.status(200).json({ message: "Itinerary day modified clean.", refreshedTrip: currentTrip });
   } catch (err) { 
