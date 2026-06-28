@@ -152,7 +152,7 @@ export const generateItineraryFromAI = async (promptText, customSchema = Itinera
     const groq = getGroqClient();
 
     const response = await groq.chat.completions.create({
-      model: 'llama-3.2-90b-text-preview', // schema-enabled model
+      model: 'llama-3.1-70b-versatile', // schema-enabled model
       messages: [
         {
           role: 'system',
